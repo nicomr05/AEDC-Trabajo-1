@@ -66,12 +66,13 @@ stopifnot("No hay CSV diario del elemento/compuesto: revisa descarga y extracci√
 
 leer <- function(f) {
   read_delim(f, delim = ";", locale = locale(encoding="ISO-8859-1"),
-             col_types = cols(.default="c"), show_col_types=FALSE) %>%
-    mutate(fichero = basename(f))
+             col_types = cols(.default="c"), show_col_types=FALSE)
 }
+
 
 # 3a. Texto tal cual viene en los CSV (todo character)
 raw_chr <- map_dfr(csv_files, leer)
+
 
 # 3b. RAW: mismas columnas y mismo formato ancho, solo con tipos convertidos
 raw_as <- raw_chr %>%
@@ -80,16 +81,18 @@ raw_as <- raw_chr %>%
     across(matches("^D\\d{2}$"),
            ~ parse_double(str_trim(.x), locale = locale(decimal_mark = ".")))
   )
-# PROVINCIA, MUNICIPIO, ESTACION y PUNTO_MUESTREO siguen como character
+
 
 # 3c. Dataset final, derivado de raw
 diario_as <- raw_as %>%
   pivot_longer(matches("^D\\d{2}$"), names_to="dia", values_to="valor") %>%
   transmute(provincia=PROVINCIA, municipio=MUNICIPIO, estacion=ESTACION,
             magnitud=MAGNITUD, punto_muestreo=PUNTO_MUESTREO,
+            anno=ANNO, mes=MES,
             fecha=as.Date(sprintf("%s-%02d-%s", ANNO, MES, str_sub(dia, 2)),
-                            format="%Y-%m-%d"),
-            valor, fichero) %>%
-  filter(!is.na(fecha))
+                          format="%Y-%m-%d"),
+            valor) %>%
+  filter(!is.na(fecha)) %>%
+  mutate(across(c(provincia, municipio, estacion, punto_muestreo, anno, mes), factor))
 
-count(diario_as, fichero)
+print(count(diario_as, anno))
