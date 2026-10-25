@@ -48,3 +48,9 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# User defined
+.gitignore
+datos/
+plantilla/
+Trabajo_2*.pdf
