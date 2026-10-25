@@ -26,19 +26,19 @@
 #' Al cargar los datos y realizar una primera ojeada, vemos que el tipo de las
 #' variables de interés `DNN` es `str`, por lo que los transformaremos a `numeric`.
 
-setwd("/home/nicomr/Escritorio/GCED/Q7/AEDC/Practica/Trabajo/")
+#setwd("/home/nicomr/Escritorio/GCED/Q7/AEDC/Practica/Trabajo/")
 
 #' ```{r, results='hide'}
 #' # carga de datos
 #' source("miteco.R")
-#' datos <- diario_c6h6
+#' datos <- diario_as
 #' 
 #' # resúmenes de los datos
 #' str(datos)
 #' summary(datos)
 #' ```
 
-#' ## Diccionario de variables de `diario_c6h6`
+#' ## Diccionario de variables de `diario_as`
 #'
 #' Algunas columnas vienen del MITECO y otras se crean en el script.
 #'
@@ -47,11 +47,10 @@ setwd("/home/nicomr/Escritorio/GCED/Q7/AEDC/Practica/Trabajo/")
 #' | `provincia` | Código INE de la provincia (2 dígitos, p. ej. 15 = A Coruña, 28 = Madrid). |
 #' | `municipio` | Código INE del municipio dentro de la provincia (3 dígitos). Para identificarlo del todo hay que combinarlo con `provincia`. |
 #' | `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
-#' | `magnitud` | Código numérico del contaminante. Para el benceno debería ser **30** (comprobar con `distinct(diario_c6h6, magnitud)` y con la documentación del MITECO). |
+#' | `magnitud` | Código numérico del contaminante. Para el benceno debería ser **30** (comprobar con `distinct(diario_as, magnitud)` y con la documentación del MITECO). |
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
 #' | `Variables DXX` | Día de la medición, del `D01` al `D31`. |
 #' | `valor` | Concentración media diaria del benceno. Lo habitual es µg/m³ (confirmar la unidad en la documentación del MITECO). Los `NA` son días sin dato válido. |
-#' | `fichero` | Nombre del CSV de origen (`C6H6_DD_2022.csv`, etc.). Campo propio, sirve para saber de qué año viene cada fila. |
 #'
 #' **Notas**
 #'
