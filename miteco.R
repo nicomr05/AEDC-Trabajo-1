@@ -96,3 +96,15 @@ diario_as <- raw_as %>%
   mutate(across(c(provincia, municipio, estacion, punto_muestreo, anno, mes), factor))
 
 print(count(diario_as, anno))
+
+# analisis inicial 
+anio <- format(diario_as$fecha, "%Y")
+ausente <- is.na(diario_as$valor)
+
+data.frame(
+  n = as.vector(table(anio)),
+  observados = as.vector(tapply(!ausente, anio, sum)),
+  ausentes = as.vector(tapply(ausente, anio, sum)),
+  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
+  row.names = names(table(anio))
+)
