@@ -48,7 +48,7 @@
 #' | `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
 #' | `fecha` | Fecha en la que se realizó la observación |
-#' | `valor` | Concentración media diaria del arsénico en $\mu g / m^3$. |
+#' | `valor` | Concentración media diaria del arsénico. No encontramos unidades en la página oficial del MITECO, pero normalmente se miden en $\mu g / m^3$. |
 #'
 #' **Notas**
 #'
