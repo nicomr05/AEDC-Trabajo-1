@@ -87,24 +87,23 @@ raw_as <- raw_chr %>%
 diario_as <- raw_as %>%
   pivot_longer(matches("^D\\d{2}$"), names_to="dia", values_to="valor") %>%
   transmute(provincia=PROVINCIA, municipio=MUNICIPIO, estacion=ESTACION,
-            magnitud=MAGNITUD, punto_muestreo=PUNTO_MUESTREO,
-            anno=ANNO, mes=MES,
+            punto_muestreo=PUNTO_MUESTREO,
             fecha=as.Date(sprintf("%s-%02d-%s", ANNO, MES, str_sub(dia, 2)),
                           format="%Y-%m-%d"),
             valor) %>%
   filter(!is.na(fecha)) %>%
-  mutate(across(c(provincia, municipio, estacion, punto_muestreo, anno, mes), factor))
+  mutate(across(c(provincia, municipio, estacion, punto_muestreo), factor))
 
-print(count(diario_as, anno))
 
 # analisis inicial 
 anio <- format(diario_as$fecha, "%Y")
 ausente <- is.na(diario_as$valor)
 
-data.frame(
+tabla <- data.frame(
   n = as.vector(table(anio)),
   observados = as.vector(tapply(!ausente, anio, sum)),
   ausentes = as.vector(tapply(ausente, anio, sum)),
   porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
   row.names = names(table(anio))
 )
+print(tabla)

@@ -26,8 +26,6 @@
 #' Al cargar los datos y realizar una primera ojeada, vemos que el tipo de las
 #' variables de interés `DNN` es `str`, por lo que los transformaremos a `numeric`.
 
-#setwd("/home/nicomr/Escritorio/GCED/Q7/AEDC/Practica/Trabajo/")
-
 #' ```{r, results='hide'}
 #' # carga de datos
 #' source("miteco.R")
@@ -39,22 +37,22 @@
 #' ```
 
 #' ## Diccionario de variables de `diario_as`
-#'
-#' Algunas columnas vienen del MITECO y otras se crean en el script.
+#' En este `tibble` se recopilan las variables que finalmente utilizaremos para
+#' nuestro análisis. Algunas columnas vienen del MITECO y otras se crean en el
+#' *script* a partir de las originales.
 #'
 #' | **Variable** | **Descripción** |
 #' |:---|:---|
 #' | `provincia` | Código INE de la provincia (2 dígitos, p. ej. 15 = A Coruña, 28 = Madrid). |
 #' | `municipio` | Código INE del municipio dentro de la provincia (3 dígitos). Para identificarlo del todo hay que combinarlo con `provincia`. |
 #' | `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
-#' | `magnitud` | Código numérico del contaminante. Para el benceno debería ser **30** (comprobar con `distinct(diario_as, magnitud)` y con la documentación del MITECO). |
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
-#' | `Variables DXX` | Día de la medición, del `D01` al `D31`. |
-#' | `valor` | Concentración media diaria del benceno. Lo habitual es µg/m³ (confirmar la unidad en la documentación del MITECO). Los `NA` son días sin dato válido. |
+#' | `fecha` | Fecha en la que se realizó la observación |
+#' | `valor` | Concentración media diaria del arsénico en $\mu g / m^3$. |
 #'
 #' **Notas**
 #'
 #' - `provincia`, `municipio` y `estacion` son solo códigos; para obtener nombres y coordenadas hace falta un catálogo aparte.
 #' - La clave de una serie temporal es `punto_muestreo` (o `provincia` + `municipio` + `estacion` + `magnitud`).
-#' - El benceno diario no lleva indicador de validación.
+#' - El arsénico diario no lleva indicador de validación.
 
