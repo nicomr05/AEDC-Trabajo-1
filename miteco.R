@@ -73,26 +73,17 @@ leer <- function(f) {
 # 3a. Texto tal cual viene en los CSV (todo character)
 raw_chr <- map_dfr(csv_files, leer)
 
-
-# 3b. RAW: mismas columnas y mismo formato ancho, solo con tipos convertidos
-raw_as <- raw_chr %>%
-  mutate(
-    across(c(MAGNITUD, ANNO, MES), parse_integer),
-    across(matches("^D\\d{2}$"),
-           ~ parse_double(str_trim(.x), locale = locale(decimal_mark = ".")))
-  )
-
-
-# 3c. Dataset final, derivado de raw
-diario_as <- raw_as %>%
+# 3b. Dataset final: se convierte directamente en formato largo
+diario_as <- raw_chr %>%
   pivot_longer(matches("^D\\d{2}$"), names_to="dia", values_to="valor") %>%
   transmute(provincia=PROVINCIA, municipio=MUNICIPIO, estacion=ESTACION,
             punto_muestreo=PUNTO_MUESTREO,
-            fecha=as.Date(sprintf("%s-%02d-%s", ANNO, MES, str_sub(dia, 2)),
+            fecha=as.Date(sprintf("%s-%02d-%s", ANNO, as.integer(MES), str_sub(dia, 2)),
                           format="%Y-%m-%d"),
             valor) %>%
   filter(!is.na(fecha)) %>%
-  mutate(across(c(provincia, municipio, estacion, punto_muestreo), factor))
+  mutate(valor=parse_double(str_trim(valor), locale=locale(decimal_mark=".")),
+         across(c(provincia, municipio, estacion, punto_muestreo), factor))
 
 
 # analisis inicial 
