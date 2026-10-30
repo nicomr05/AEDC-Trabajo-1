@@ -21,25 +21,34 @@
 #' ```
 
 #' \newpage
-
+#' 
 #' # Primeros pasos
-#' Al cargar los datos y realizar una primera ojeada, vemos que el tipo de las
-#' variables de interés `DNN` es `str`, por lo que los transformaremos a `numeric`.
-
-#' ```{r, results='hide'}
-#' # carga de datos
+#' 
+#' Al cargar los datos por primera vez pudimos observar que los datos contenían
+#' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
+#' cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
+#' mes.
+#' Debido a esto, la variable `D31` tendrá un nulo en los meses que tengan 30 días.
+#' De manera similar, en febrero habrá nulos en los días 30 y 31, además de el 29
+#' en años bisiestos.
+#' 
+#' Dado que la falta de estos valores se da únicamente por la forma de guardar los
+#' datos, decidimos convertir las 31 variables en una columna `valor` (de tipo
+#' `numeric`) y crear a su vez una columna `fecha` (de tipo `Date`) a partir de
+#' los valores de `ANNO`, `MES` y `DXX`.
+#' Además, convertimos las variables `provincia`, `municipio`, `estacion`,
+#' `punto_muestreo` a `factor`.
+#' 
+#' 
+#' ```{r carga-datos, results='hide'}
 #' source("miteco.R")
 #' datos <- diario_as
-#' 
-#' # resúmenes de los datos
-#' str(datos)
-#' summary(datos)
 #' ```
-
+#' 
+#' 
 #' ## Diccionario de variables de `diario_as`
-#' En este `tibble` se recopilan las variables que finalmente utilizaremos para
-#' nuestro análisis. Algunas columnas vienen del MITECO y otras se crean en el
-#' *script* a partir de las originales.
+#' A continuación se muestra una tabla de guía para las variables del *tibble*
+#' `diario_as`.
 #'
 #' | **Variable** | **Descripción** |
 #' |:---|:---|
@@ -50,9 +59,4 @@
 #' | `fecha` | Fecha en la que se realizó la observación |
 #' | `valor` | Concentración media diaria del arsénico. No encontramos unidades en la página oficial del MITECO, pero normalmente se miden en $\mu g / m^3$. |
 #'
-#' **Notas**
 #'
-#' - `provincia`, `municipio` y `estacion` son solo códigos; para obtener nombres y coordenadas hace falta un catálogo aparte.
-#' - La clave de una serie temporal es `punto_muestreo` (o `provincia` + `municipio` + `estacion` + `magnitud`).
-#' - El arsénico diario no lleva indicador de validación.
-
