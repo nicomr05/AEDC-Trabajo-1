@@ -8,7 +8,7 @@ Este repositorio contiene el script que descarga, extrae y prepara los datos. El
 
 ```
 .
-├── miteco.R      # descarga, extracción y preparación de los datos
+├── miteco.R      # descarga, extracción, preparación y resumen inicial de faltantes
 ├── README.md
 └── datos/        # se crea al ejecutar el script
     ├── miteco_zip/   # ZIP descargados
@@ -23,11 +23,11 @@ Este repositorio contiene el script que descarga, extrae y prepara los datos. El
 - **Qué se descarga:** solo los ZIP de *datos diarios* de cada año; de ellos se extraen únicamente los CSV `As_DD_*.csv`.
 - **Formato de origen:** CSV separados por `;`, codificación ISO-8859-1, en **formato ancho**: una fila por punto de muestreo y mes, con una columna por día (`D01` … `D31`).
 
-> El patrón de extracción (`As_DD_.*\.csv$`) se define en una sola variable (`patron`) del script. Cambiándolo se puede trabajar con otro contaminante diario (por ejemplo, `C6H6_DD_`), siempre que ese fichero exista en los ZIP del año.
+> El patrón de extracción (`As_DD_.*\.csv$`) se define en una sola variable (`patron`) del script. Cambiándolo se puede trabajar con otro contaminante diario (por ejemplo, `C6H6_DD_`), siempre que ese fichero exista en los ZIP del año. En ese caso hay que actualizar también el nombre del dataset y este README.
 
 ## Requisitos
 
-- R (≥ 4.1 recomendado, por el uso de `across()` y de las funciones de `dplyr` y `tidyr` actuales)
+- R (≥ 4.1 recomendado)
 - Paquetes: `dplyr`, `readr`, `purrr`, `stringr`, `tidyr`, `xml2`, `rvest`
 - Conexión a internet la primera vez (después se reutilizan los ZIP ya descargados)
 
@@ -56,31 +56,33 @@ Las rutas son relativas, así que el directorio de trabajo debe ser la carpeta d
 1. **Rutas.** Define y crea `datos/miteco_zip` y `datos/miteco_csv`.
 2. **Descarga.** Lee las páginas del MITECO de 2022 y 2023, extrae los enlaces a ficheros `.zip`, se queda con los de *datos diarios*, normaliza la URL (tildes y espacios) y descarga solo los que aún no están en disco.
 3. **Extracción selectiva.** Mira el contenido de cada ZIP sin descomprimirlo y extrae únicamente los CSV que coinciden con el patrón del contaminante.
-4. **Lectura.** Lee los CSV con separador `;` y codificación ISO-8859-1, todo como texto, y añade la columna `fichero` con el nombre del CSV de origen.
-5. **Datasets resultantes:**
+4. **Lectura.** Lee los CSV (separador `;`, ISO-8859-1) como texto y los apila en `raw_chr`.
+5. **Construcción de `diario_as`.** Pasa de formato ancho a largo (una fila por punto de muestreo y día), construye `fecha` a partir de año, mes y número de día, y descarta las combinaciones que no existen en el calendario (30 de febrero, 31 de abril…), que son faltantes *estructurales* y no datos perdidos. Después convierte `valor` a numérico y los identificadores a factor.
+6. **Resumen inicial.** Imprime una tabla por año con el número de observaciones, valores presentes, ausentes y porcentaje de `NA`.
 
-   | Objeto | Descripción |
-   |---|---|
-   | `raw_chr` | Texto tal cual viene en los CSV, sin conversiones. |
-   | `raw_as` | Mismas columnas y mismo formato ancho, solo con tipos convertidos (`MAGNITUD`, `ANNO`, `MES` a entero; `D01`…`D31` a numérico). Los identificadores se mantienen como texto para no perder ceros a la izquierda. |
-   | `diario_as` | Formato largo: una fila por punto de muestreo y día. Es el dataset de análisis. |
+### Objetos principales
 
-6. **Construcción de `diario_as`.** Pasa de ancho a largo, construye `fecha` a partir de año, mes y número de día, y descarta las combinaciones que no existen en el calendario (30 de febrero, 31 de abril…), que son faltantes *estructurales* y no datos perdidos.
+| Objeto | Descripción |
+|---|---|
+| `raw_chr` | Datos tal cual vienen en los CSV (todo texto, formato ancho). Es la única copia del texto original, útil para inspeccionar qué había exactamente en una celda que acabó en `NA`. Conserva columnas que `diario_as` no incluye, como `MAGNITUD`, `ANNO` y `MES`. |
+| `diario_as` | Formato largo, una fila por punto de muestreo y día. Es el dataset de análisis. |
 
 ## Diccionario de variables de `diario_as`
 
-| Variable | Descripción |
-|---|---|
-| `provincia` | Código INE de la provincia. |
-| `municipio` | Código del municipio dentro de la provincia (solo es único combinado con `provincia`). |
-| `estacion` | Código de la estación dentro del municipio. |
-| `magnitud` | Código numérico del contaminante. |
-| `punto_muestreo` | Identificador del equipo concreto dentro de una estación. |
-| `anno`, `mes` | Año y mes de la medición. |
-| `fecha` | Día de la medición (construida a partir de `anno`, `mes` y la columna `D01`…`D31` de origen). |
-| `valor` | Concentración media diaria. `NA` indica ausencia de dato. Unidad: confirmar en la documentación del MITECO. |
+| Variable | Tipo | Descripción |
+|---|---|---|
+| `provincia` | factor | Código INE de la provincia. |
+| `municipio` | factor | Código del municipio dentro de la provincia (solo es único combinado con `provincia`). |
+| `estacion` | factor | Código de la estación dentro del municipio (solo es único combinado con provincia y municipio). |
+| `punto_muestreo` | factor | Identificador del equipo concreto dentro de una estación. |
+| `fecha` | Date | Día de la medición (construida a partir del año, el mes y la columna `D01`…`D31` de origen). |
+| `valor` | numérico | Concentración media diaria de arsénico. `NA` indica ausencia de dato. Unidad: confirmar en la documentación del MITECO. |
 
-`provincia`, `municipio`, `estacion` y `punto_muestreo` son **códigos**, no nombres. Para obtener nombres y coordenadas de las estaciones hace falta un catálogo aparte.
+Notas sobre las variables:
+
+- `provincia`, `municipio`, `estacion` y `punto_muestreo` son **códigos**, no nombres. Para obtener nombres y coordenadas de las estaciones hace falta un catálogo aparte.
+- Las cuatro están **anidadas** (provincia ⊃ municipio ⊃ estación ⊃ punto de muestreo). Al modelar, conviene elegir un único nivel de granularidad en lugar de incluirlas todas a la vez.
+- No se incluyen `magnitud` (constante, porque todo el dataset es arsénico; el código sigue disponible en `raw_chr$MAGNITUD`), `anno` y `mes` (derivables de `fecha`) ni el fichero de origen.
 
 ## Consideraciones para el análisis de faltantes
 
