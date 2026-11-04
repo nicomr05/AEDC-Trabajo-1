@@ -98,3 +98,17 @@ tabla <- data.frame(
   row.names = names(table(anio))
 )
 print(tabla)
+
+plot(density(as.numeric(is.na(valor))), main="Densidad de valores no nulos")
+
+
+# gráficos de nulos
+idx <- diario_as$fecha < as.Date("2022-02-28")
+plot(fecha, valor, type='b', pch=16, cex=.55, col='steelblue4', xlab='Fecha',
+     ylab='As (ng/m^3)', main='Serie diaria de arsénico')
+rug(fecha[is.na(valor)], side=1, col='firebrick3', lwd=2)
+legend('top', legend=c('Arsénico observado','Día sin arsénico'), horiz=TRUE,
+       col=c('steelblue4','firebrick3'), lty=c(1,NA), pch=c(16,124), bty='n')
+
+
+VIM::marginplot(diario_as[, c("fecha","valor")], pch=16, cex.numbers=.9)
