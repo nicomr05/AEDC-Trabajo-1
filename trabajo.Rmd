@@ -1,0 +1,123 @@
+---
+title: \textbf{Trabajo Datos Faltantes}
+subtitle: Tema 1, MITECO
+author: [S. E. Elizabet, M. R. Nicolás]
+date: \today
+toc: true
+toc_depth: 2
+fontsize: 12pt
+number_sections: true
+fig_width: 7
+fig_height: 6
+fig_caption: true
+df_print: tibble  # print.data.frame(default)/kable/tibble
+highlight: tango
+latex_engine: pdflatex
+abstract: Aquí definimos el trabajo realizado en un pequeño resumen.
+header-includes:
+- \usepackage{fvextra}
+- \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+- \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=81))
+knitr::spin("trabajo.R", knit=FALSE)
+source("miteco.R")
+datos <- diario_as
+attach(datos)
+```
+
+```{r libraries, include=FALSE}
+library(mice)
+```
+
+\newpage
+
+# Primeros pasos
+
+Al cargar los datos por primera vez pudimos observar que los datos contenían
+38 variables de tipo `chr` para identificar cada una de las mediciones, de las
+cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
+mes.
+Debido a esto, la variable `D31` tendrá un nulo en los meses que tengan 30 días.
+De manera similar, en febrero habrá nulos en los días 30 y 31, además de el 29
+en años bisiestos.
+Se puede observar además que estas últimas son las únicas variables con valores
+faltantes.
+
+Dado que la falta de estos valores se da únicamente por la forma de guardar los
+datos, decidimos convertir las 31 variables en una columna `valor` (de tipo
+`numeric`) y crear a su vez una columna `fecha` (de tipo `Date`) a partir de
+los valores de `ANNO`, `MES` y `DXX`.
+Además, convertimos las variables `provincia`, `municipio`, `estacion`,
+`punto_muestreo` a `factor`.
+
+
+## Diccionario de variables de `diario_as`
+A continuación se muestra una tabla de guía para las variables del *tibble*
+`diario_as`.
+
+| **Variable** | **Descripción** |
+|:---|:---|
+| `provincia` | Código INE de la provincia (2 dígitos, p. ej. 15 = A Coruña, 28 = Madrid). |
+| `municipio` | Código INE del municipio dentro de la provincia (3 dígitos). Para identificarlo del todo hay que combinarlo con `provincia`. |
+| `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
+| `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
+| `fecha` | Fecha en la que se realizó la observación |
+| `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
+
+
+# Distribución de los valores y nulos
+
+Comenzaremos mostrando las estadísticas generales del valor medio de la
+concentración diaria de arsénico:
+
+````{r}
+summary(datos)
+````
+
+La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
+y 33, con media 0.5571 y mediana 0.33.
+Además, cuenta con 61233 nulos.
+
+Si mostramos la distribución de los valores de la misma, observamos que
+efectivamente, la mayoría de valores se aproximan al 0.
+
+````{r}
+hist(valor, breaks='FD', col='black', main='Arsénico observado',
+     xlab='Concentración de arsénico', ylab='Frecuencia', freq=TRUE)
+````
+
+La función `mice::md.pattern()` no aporta mucha información útil, ya que solo
+contamos con una variable, así que no nos molestaremos en incluirla.
+Igualmente, dentro de esta variable podemos ver el conteo de nulos, por ejemplo
+por año:
+
+````{r}
+anio <- format(fecha, '%Y')
+ausente <- is.na(valor)
+
+tabla.anios <- data.frame(
+  n = as.vector(table(anio)),
+  observados = as.vector(tapply(!ausente, anio, sum)),
+  ausentes = as.vector(tapply(ausente, anio, sum)),
+  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
+  row.names = names(table(anio))
+)
+tabla.anios
+````
+
+Podemos visualizar también la distribución temporal de nulos.
+Lo haremos en el municipio de Coruña para no saturar la gráfica:
+
+````{r}
+cond <- (municipio == 15) # código de INE para Coruña
+
+var <- 'Provincia'
+VIM::marginplot(datos[, c(str_to_lower(var), 'valor')], xlab=var,
+                ylab='As (ng/m^3)', pch=16, cex.numbers=.9)
+````
+
+De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
+de todo el rango de valores.

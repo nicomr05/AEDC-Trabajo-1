@@ -3,6 +3,7 @@ library(readr)
 library(purrr)
 library(stringr)
 library(tidyr)
+library(naniar)
 
 
 # Rutas (se definen una vez y se usan en todo el script)
@@ -84,31 +85,3 @@ diario_as <- raw_chr %>%
   filter(!is.na(fecha)) %>%
   mutate(valor=parse_double(str_trim(valor), locale=locale(decimal_mark=".")),
          across(c(provincia, municipio, estacion, punto_muestreo), factor))
-
-
-# analisis inicial 
-anio <- format(diario_as$fecha, "%Y")
-ausente <- is.na(diario_as$valor)
-
-tabla <- data.frame(
-  n = as.vector(table(anio)),
-  observados = as.vector(tapply(!ausente, anio, sum)),
-  ausentes = as.vector(tapply(ausente, anio, sum)),
-  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
-  row.names = names(table(anio))
-)
-print(tabla)
-
-plot(density(as.numeric(is.na(valor))), main="Densidad de valores no nulos")
-
-
-# gráficos de nulos
-idx <- diario_as$fecha < as.Date("2022-02-28")
-plot(fecha, valor, type='b', pch=16, cex=.55, col='steelblue4', xlab='Fecha',
-     ylab='As (ng/m^3)', main='Serie diaria de arsénico')
-rug(fecha[is.na(valor)], side=1, col='firebrick3', lwd=2)
-legend('top', legend=c('Arsénico observado','Día sin arsénico'), horiz=TRUE,
-       col=c('steelblue4','firebrick3'), lty=c(1,NA), pch=c(16,124), bty='n')
-
-
-VIM::marginplot(diario_as[, c("fecha","valor")], pch=16, cex.numbers=.9)

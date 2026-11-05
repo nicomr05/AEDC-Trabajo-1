@@ -14,12 +14,24 @@
 #' highlight: tango
 #' latex_engine: pdflatex
 #' abstract: Aquí definimos el trabajo realizado en un pequeño resumen.
+#' header-includes:
+#' - \usepackage{fvextra}
+#' - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+#' - \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
 #' ---
-
+#' 
 #' ```{r setup, include=FALSE}
-#' knitr::opts_chunk$set(echo = FALSE)
+#' knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=81))
+#' knitr::spin("trabajo.R", knit=FALSE)
+#' source("miteco.R")
+#' datos <- diario_as
+#' attach(datos)
 #' ```
-
+#' 
+#' ```{r libraries, include=FALSE}
+#' library(mice)
+#' ```
+#' 
 #' \newpage
 #' 
 #' # Primeros pasos
@@ -42,12 +54,6 @@
 #' `punto_muestreo` a `factor`.
 #' 
 #' 
-#' ```{r carga-datos, results='hide'}
-#' source("miteco.R")
-#' datos <- diario_as
-#' ```
-#' 
-#' 
 #' ## Diccionario de variables de `diario_as`
 #' A continuación se muestra una tabla de guía para las variables del *tibble*
 #' `diario_as`.
@@ -59,20 +65,52 @@
 #' | `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
 #' | `fecha` | Fecha en la que se realizó la observación |
-#' | `valor` | Concentración media diaria del arsénico. No encontramos unidades en la página oficial del MITECO, pero normalmente se miden en $ng / m^3$. |
+#' | `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
 #' 
 #' 
 #' # Distribución de los valores y nulos
 #' 
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
-#' concentración de `As`, sin contar los nulos:
+#' concentración diaria de arsénico:
 
-summary(diario_as$valor)
+summary(datos)
 
-#' Así como la distribución de la variable:
+#' La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
+#' y 33, con media 0.5571 y mediana 0.33.
+#' Además, cuenta con 61233 nulos.
+#' 
+#' Si mostramos la distribución de los valores de la misma, observamos que
+#' efectivamente, la mayoría de valores se aproximan al 0.
 
-hist(diario_as$valor, breaks="FD", col='black',
-     main='Arsénico observado', xlab='Concentración de arsénico',
-     ylab='Frecuencia', freq=TRUE)
+hist(valor, breaks='FD', col='black', main='Arsénico observado',
+     xlab='Concentración de arsénico', ylab='Frecuencia', freq=TRUE)
 
-#' A la vista de estos resultados, se observa que la mayoría de los valores
+#' La función `mice::md.pattern()` no aporta mucha información útil, ya que solo
+#' contamos con una variable, así que no nos molestaremos en incluirla.
+#' Igualmente, dentro de esta variable podemos ver el conteo de nulos, por ejemplo
+#' por año:
+
+
+anio <- format(fecha, '%Y')
+ausente <- is.na(valor)
+
+tabla.anios <- data.frame(
+  n = as.vector(table(anio)),
+  observados = as.vector(tapply(!ausente, anio, sum)),
+  ausentes = as.vector(tapply(ausente, anio, sum)),
+  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
+  row.names = names(table(anio))
+)
+tabla.anios
+
+#' Podemos visualizar también la distribución temporal de nulos.
+#' Lo haremos en el municipio de Coruña para no saturar la gráfica:
+
+cond <- (municipio == 15) # código de INE para Coruña
+
+var <- 'Provincia'
+VIM::marginplot(datos[, c(str_to_lower(var), 'valor')], xlab=var,
+                ylab='As (ng/m^3)', pch=16, cex.numbers=.9)
+
+#' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
+#' de todo el rango de valores.
