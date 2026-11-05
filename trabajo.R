@@ -21,16 +21,16 @@
 #' ---
 #' 
 #' ```{r setup, include=FALSE}
-#' knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=81))
+#' knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=75))
 #' knitr::spin("trabajo.R", knit=FALSE)
-#' source("miteco.R")
-#' datos <- diario_as
-#' attach(datos)
 #' ```
-#' 
-#' ```{r libraries, include=FALSE}
-#' library(mice)
-#' ```
+
+library(mice, warn.conflicts=FALSE)
+library(naniar, warn.conflicts=FALSE)
+
+source("miteco.R")
+attach(diario_as)
+
 #' 
 #' \newpage
 #' 
@@ -73,7 +73,7 @@
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
 #' concentración diaria de arsénico:
 
-summary(datos)
+summary(diario_as)
 
 #' La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
 #' y 33, con media 0.5571 y mediana 0.33.
@@ -106,11 +106,14 @@ tabla.anios
 #' Podemos visualizar también la distribución temporal de nulos.
 #' Lo haremos en el municipio de Coruña para no saturar la gráfica:
 
-cond <- (municipio == 15) # código de INE para Coruña
+cond <- (municipio == 15)  # código de INE para Coruña
 
 var <- 'Provincia'
-VIM::marginplot(datos[, c(str_to_lower(var), 'valor')], xlab=var,
+VIM::marginplot(diario_as[, c(str_to_lower(var), 'valor')], xlab=var,
                 ylab='As (ng/m^3)', pch=16, cex.numbers=.9)
 
 #' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
 #' de todo el rango de valores.
+
+
+detach(diario_as)

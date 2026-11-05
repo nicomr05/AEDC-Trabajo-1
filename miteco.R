@@ -3,7 +3,6 @@ library(readr)
 library(purrr)
 library(stringr)
 library(tidyr)
-library(naniar)
 
 
 # Rutas (se definen una vez y se usan en todo el script)
@@ -32,31 +31,40 @@ get_zip_links <- function(url) {
 }
 
 
-# 1. Descargar solo los ZIP de datos diarios
-all_zips <- unlist(map(base_urls, get_zip_links))
-all_zips <- all_zips[str_detect(URLdecode(all_zips), regex("diarios", ignore_case = TRUE))]
-print(URLdecode(all_zips))
+# 1. Descargar solo los ZIP de datos diarios (solo los años que falten)
+zips_locales <- dir(dir_zip, pattern="\\.zip$", ignore.case=TRUE)
+anios_pendientes <- names(base_urls)[
+  !map_lgl(names(base_urls), ~ any(str_detect(zips_locales, .x)))
+]
 
-for (z in all_zips) {
-  nombre <- URLdecode(basename(z))      # "Datos diarios 202X.zip"
-  url    <- URLencode(URLdecode(z))     # normaliza tildes y espacios
-  fname  <- file.path(dir_zip, nombre)
-  if (!file.exists(fname)) {
-    cat("Descargando", fname, "\n")
-    download.file(url, destfile=fname, mode="wb", quiet=TRUE)
+if (length(anios_pendientes) > 0) {
+  all_zips <- unlist(map(base_urls[anios_pendientes], get_zip_links))
+  all_zips <- all_zips[str_detect(URLdecode(all_zips), regex("diarios", ignore_case=TRUE))]
+  
+  for (z in all_zips) {
+    nombre <- URLdecode(basename(z))
+    url    <- URLencode(URLdecode(z))
+    fname  <- file.path(dir_zip, nombre)
+    if (!file.exists(fname)) {
+      cat("Descargando", fname, "\n")
+      tmp <- paste0(fname, ".part")
+      download.file(url, destfile=tmp, mode="wb", quiet=TRUE)
+      file.rename(tmp, fname)   # solo queda el .zip si la descarga terminó bien
+    }
   }
 }
-print(list.files(dir_zip))
 
 
-# 2. Extraer solo los CSV diarios del elemento/compuesto a elegir
+# 2. Extraer solo los CSV diarios que aún no estén extraídos
 patron <- "As_DD_.*\\.csv$"
 
 zip_files <- dir(dir_zip, pattern="\\.zip$", full.names=TRUE)
 walk(zip_files, function(z) {
-  contenido <- unzip(z, list=TRUE)$Name
-  buscados  <- contenido[str_detect(contenido, regex(patron, ignore_case=TRUE))]
-  if (length(buscados) > 0) unzip(z, files=buscados, exdir=dir_csv)
+  contenido  <- unzip(z, list=TRUE)$Name
+  buscados   <- contenido[str_detect(contenido, regex(patron, ignore_case=TRUE))]
+  existentes <- dir(dir_csv, recursive=TRUE)
+  pendientes <- buscados[!(basename(buscados) %in% basename(existentes))]
+  if (length(pendientes) > 0) unzip(z, files=pendientes, exdir=dir_csv)
 })
 
 
