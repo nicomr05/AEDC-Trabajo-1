@@ -34,7 +34,17 @@ attach(diario_as)
 #' 
 #' \newpage
 #' 
-#' # Primeros pasos
+#' # Introducción y objetivo
+#' 
+#' Los mecanismos de identificación del tipo de datos faltantes es un tema que
+#' resulta necesario en muchos trabajos reales en los que se aplica la
+#' estadística. 
+#' El objetivo del trabajo es hacer tanto una exploración de los datos como un
+#' análisis de datos faltantes, indicando si el mecanismo de ausencia es MCAR,
+#' MAR o MNAR.
+#' 
+#' 
+#' # Datos
 #' 
 #' Al cargar los datos por primera vez pudimos observar que los datos contenían
 #' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
