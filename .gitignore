@@ -52,4 +52,5 @@ rsconnect/
 # User defined
 .gitignore
 datos/
+test/
 plantilla/
