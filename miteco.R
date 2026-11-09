@@ -1,4 +1,4 @@
-library(dplyr, warn.conflicts=FALSE)
+library(dplyr, warn.conflicts = FALSE)
 library(readr)
 library(purrr)
 library(stringr)
@@ -9,8 +9,8 @@ library(tidyr)
 data_dir <- "datos"
 dir_zip <- file.path(data_dir, "miteco_zip")
 dir_csv <- file.path(data_dir, "miteco_csv")
-dir.create(dir_zip, showWarnings=FALSE, recursive=TRUE)
-dir.create(dir_csv, showWarnings=FALSE, recursive=TRUE)
+dir.create(dir_zip, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_csv, showWarnings = FALSE, recursive = TRUE)
 stopifnot(dir.exists(dir_zip), dir.exists(dir_csv))
 
 base_urls <- list(
@@ -20,36 +20,39 @@ base_urls <- list(
 
 
 get_zip_links <- function(url) {
-  page <- tryCatch(xml2::read_html(url), error=function(e) {
-    warning("No se pudo leer: ", url); NULL
+  page <- tryCatch(xml2::read_html(url), error = function(e) {
+    warning("No se pudo leer: ", url)
+    NULL
   })
-  if (is.null(page)) return(character())
+  if (is.null(page)) {
+    return(character())
+  }
   hrefs <- rvest::html_nodes(page, "a") %>% rvest::html_attr("href")
-  hrefs <- hrefs[grepl("\\.zip$", hrefs, ignore.case=TRUE)]
+  hrefs <- hrefs[grepl("\\.zip$", hrefs, ignore.case = TRUE)]
   hrefs <- ifelse(grepl("^http", hrefs), hrefs, paste0("https://www.miteco.gob.es", hrefs))
   unique(hrefs)
 }
 
 
 # 1. Descargar solo los ZIP de datos diarios (solo los años que falten)
-zips_locales <- dir(dir_zip, pattern="\\.zip$", ignore.case=TRUE)
+zips_locales <- dir(dir_zip, pattern = "\\.zip$", ignore.case = TRUE)
 anios_pendientes <- names(base_urls)[
   !map_lgl(names(base_urls), ~ any(str_detect(zips_locales, .x)))
 ]
 
 if (length(anios_pendientes) > 0) {
   all_zips <- unlist(map(base_urls[anios_pendientes], get_zip_links))
-  all_zips <- all_zips[str_detect(URLdecode(all_zips), regex("diarios", ignore_case=TRUE))]
-  
+  all_zips <- all_zips[str_detect(URLdecode(all_zips), regex("diarios", ignore_case = TRUE))]
+
   for (z in all_zips) {
     nombre <- URLdecode(basename(z))
-    url    <- URLencode(URLdecode(z))
-    fname  <- file.path(dir_zip, nombre)
+    url <- URLencode(URLdecode(z))
+    fname <- file.path(dir_zip, nombre)
     if (!file.exists(fname)) {
       cat("Descargando", fname, "\n")
       tmp <- paste0(fname, ".part")
-      download.file(url, destfile=tmp, mode="wb", quiet=TRUE)
-      file.rename(tmp, fname)   # solo queda el .zip si la descarga terminó bien
+      download.file(url, destfile = tmp, mode = "wb", quiet = TRUE)
+      file.rename(tmp, fname) # solo queda el .zip si la descarga terminó bien
     }
   }
 }
@@ -58,24 +61,26 @@ if (length(anios_pendientes) > 0) {
 # 2. Extraer solo los CSV diarios que aún no estén extraídos
 patron <- "As_DD_.*\\.csv$"
 
-zip_files <- dir(dir_zip, pattern="\\.zip$", full.names=TRUE)
+zip_files <- dir(dir_zip, pattern = "\\.zip$", full.names = TRUE)
 walk(zip_files, function(z) {
-  contenido  <- unzip(z, list=TRUE)$Name
-  buscados   <- contenido[str_detect(contenido, regex(patron, ignore_case=TRUE))]
-  existentes <- dir(dir_csv, recursive=TRUE)
+  contenido <- unzip(z, list = TRUE)$Name
+  buscados <- contenido[str_detect(contenido, regex(patron, ignore_case = TRUE))]
+  existentes <- dir(dir_csv, recursive = TRUE)
   pendientes <- buscados[!(basename(buscados) %in% basename(existentes))]
-  if (length(pendientes) > 0) unzip(z, files=pendientes, exdir=dir_csv)
+  if (length(pendientes) > 0) unzip(z, files = pendientes, exdir = dir_csv)
 })
 
 
 # 3. Leer
-csv_files <- dir(dir_csv, pattern = patron, full.names=TRUE, recursive=TRUE)
-#print(basename(csv_files))
+csv_files <- dir(dir_csv, pattern = patron, full.names = TRUE, recursive = TRUE)
+# print(basename(csv_files))
 stopifnot("No hay CSV diario del elemento/compuesto: revisa descarga y extracción" = length(csv_files) > 0)
 
 leer <- function(f) {
-  read_delim(f, delim = ";", locale = locale(encoding="ISO-8859-1"),
-             col_types = cols(.default="c"), show_col_types=FALSE)
+  read_delim(f,
+    delim = ";", locale = locale(encoding = "ISO-8859-1"),
+    col_types = cols(.default = "c"), show_col_types = FALSE
+  )
 }
 
 
@@ -84,12 +89,17 @@ raw_chr <- map_dfr(csv_files, leer)
 
 # 3b. Dataset final: se convierte directamente en formato largo
 diario_as <- raw_chr %>%
-  pivot_longer(matches("^D\\d{2}$"), names_to="dia", values_to="valor") %>%
-  transmute(provincia=PROVINCIA, municipio=MUNICIPIO, estacion=ESTACION,
-            punto_muestreo=PUNTO_MUESTREO,
-            fecha=as.Date(sprintf("%s-%02d-%s", ANNO, as.integer(MES), str_sub(dia, 2)),
-                          format="%Y-%m-%d"),
-            valor) %>%
+  pivot_longer(matches("^D\\d{2}$"), names_to = "dia", values_to = "valor") %>%
+  transmute(
+    provincia = PROVINCIA, municipio = MUNICIPIO, estacion = ESTACION,
+    punto_muestreo = PUNTO_MUESTREO,
+    fecha = as.Date(sprintf("%s-%02d-%s", ANNO, as.integer(MES), str_sub(dia, 2)),
+      format = "%Y-%m-%d"
+    ),
+    valor
+  ) %>%
   filter(!is.na(fecha)) %>%
-  mutate(valor=parse_double(str_trim(valor), locale=locale(decimal_mark=".")),
-         across(c(provincia, municipio, estacion, punto_muestreo), factor))
+  mutate(
+    valor = parse_double(str_trim(valor), locale = locale(decimal_mark = ".")),
+    across(c(provincia, municipio, estacion, punto_muestreo), factor)
+  )

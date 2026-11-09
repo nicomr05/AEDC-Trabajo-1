@@ -19,33 +19,33 @@
 #' - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
 #' - \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
 #' ---
-#' 
+#'
 #' ```{r setup, include=FALSE}
 #' knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=75))
 #' knitr::spin("trabajo.R", knit=FALSE)
 #' ```
 
-library(mice, warn.conflicts=FALSE)
-library(naniar, warn.conflicts=FALSE)
+library(mice, warn.conflicts = FALSE)
+library(naniar, warn.conflicts = FALSE)
 
 source("miteco.R")
 attach(diario_as)
 
-#' 
+#'
 #' \newpage
-#' 
+#'
 #' # Introducción y objetivo
-#' 
+#'
 #' Los mecanismos de identificación del tipo de datos faltantes es un tema que
 #' resulta necesario en muchos trabajos reales en los que se aplica la
-#' estadística. 
+#' estadística.
 #' El objetivo del trabajo es hacer tanto una exploración de los datos como un
 #' análisis de datos faltantes, indicando si el mecanismo de ausencia es MCAR,
 #' MAR o MNAR.
-#' 
-#' 
+#'
+#'
 #' # Datos
-#' 
+#'
 #' Al cargar los datos por primera vez pudimos observar que los datos contenían
 #' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
 #' cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
@@ -55,15 +55,15 @@ attach(diario_as)
 #' en años bisiestos.
 #' Se puede observar además que estas últimas son las únicas variables con valores
 #' faltantes.
-#' 
+#'
 #' Dado que la falta de estos valores se da únicamente por la forma de guardar los
 #' datos, decidimos convertir las 31 variables en una columna `valor` (de tipo
 #' `numeric`) y crear a su vez una columna `fecha` (de tipo `Date`) a partir de
 #' los valores de `ANNO`, `MES` y `DXX`.
 #' Además, convertimos las variables `provincia`, `municipio`, `estacion`,
 #' `punto_muestreo` a `factor`.
-#' 
-#' 
+#'
+#'
 #' ## Diccionario de variables de `diario_as`
 #' A continuación se muestra una tabla de guía para las variables del *tibble*
 #' `diario_as`.
@@ -76,10 +76,10 @@ attach(diario_as)
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
 #' | `fecha` | Fecha en la que se realizó la observación |
 #' | `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
-#' 
-#' 
+#'
+#'
 #' # Distribución de los valores y nulos
-#' 
+#'
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
 #' concentración diaria de arsénico:
 
@@ -88,12 +88,14 @@ summary(diario_as)
 #' La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
 #' y 33, con media 0.5571 y mediana 0.33.
 #' Además, cuenta con 61233 nulos.
-#' 
+#'
 #' Si mostramos la distribución de los valores de la misma, observamos que
 #' efectivamente, la mayoría de valores se aproximan al 0.
 
-hist(valor, breaks='FD', col='black', main='Arsénico observado',
-     xlab='Concentración de arsénico', ylab='Frecuencia', freq=TRUE)
+hist(valor,
+  breaks = "FD", col = "black", main = "Arsénico observado",
+  xlab = "Concentración de arsénico", ylab = "Frecuencia", freq = TRUE
+)
 
 #' La función `mice::md.pattern()` no aporta mucha información útil, ya que solo
 #' contamos con una variable, así que no nos molestaremos en incluirla.
@@ -101,7 +103,7 @@ hist(valor, breaks='FD', col='black', main='Arsénico observado',
 #' por año:
 
 
-anio <- format(fecha, '%Y')
+anio <- format(fecha, "%Y")
 ausente <- is.na(valor)
 
 tabla.anios <- data.frame(
@@ -116,14 +118,17 @@ tabla.anios
 #' Podemos visualizar también la distribución temporal de nulos.
 #' Lo haremos en el municipio de Coruña para no saturar la gráfica:
 
-cond <- (municipio == 15)  # código de INE para Coruña
+cond <- (municipio == 15) # código de INE para Coruña
 
-var <- 'Provincia'
-VIM::marginplot(diario_as[, c(str_to_lower(var), 'valor')], xlab=var,
-                ylab='As (ng/m^3)', pch=16, cex.numbers=.9)
+var <- "Provincia"
+VIM::marginplot(diario_as[, c(str_to_lower(var), "valor")],
+  xlab = var,
+  ylab = "As (ng/m^3)", pch = 16, cex.numbers = .9
+)
 
 #' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
 #' de todo el rango de valores.
 
 
 detach(diario_as)
+

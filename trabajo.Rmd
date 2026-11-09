@@ -26,8 +26,8 @@ knitr::spin("trabajo.R", knit=FALSE)
 ```
 
 ````{r}
-library(mice, warn.conflicts=FALSE)
-library(naniar, warn.conflicts=FALSE)
+library(mice, warn.conflicts = FALSE)
+library(naniar, warn.conflicts = FALSE)
 
 source("miteco.R")
 attach(diario_as)
@@ -40,7 +40,7 @@ attach(diario_as)
 
 Los mecanismos de identificación del tipo de datos faltantes es un tema que
 resulta necesario en muchos trabajos reales en los que se aplica la
-estadística. 
+estadística.
 El objetivo del trabajo es hacer tanto una exploración de los datos como un
 análisis de datos faltantes, indicando si el mecanismo de ausencia es MCAR,
 MAR o MNAR.
@@ -97,8 +97,10 @@ Si mostramos la distribución de los valores de la misma, observamos que
 efectivamente, la mayoría de valores se aproximan al 0.
 
 ````{r}
-hist(valor, breaks='FD', col='black', main='Arsénico observado',
-     xlab='Concentración de arsénico', ylab='Frecuencia', freq=TRUE)
+hist(valor,
+  breaks = "FD", col = "black", main = "Arsénico observado",
+  xlab = "Concentración de arsénico", ylab = "Frecuencia", freq = TRUE
+)
 ````
 
 La función `mice::md.pattern()` no aporta mucha información útil, ya que solo
@@ -107,7 +109,7 @@ Igualmente, dentro de esta variable podemos ver el conteo de nulos, por ejemplo
 por año:
 
 ````{r}
-anio <- format(fecha, '%Y')
+anio <- format(fecha, "%Y")
 ausente <- is.na(valor)
 
 tabla.anios <- data.frame(
@@ -124,11 +126,13 @@ Podemos visualizar también la distribución temporal de nulos.
 Lo haremos en el municipio de Coruña para no saturar la gráfica:
 
 ````{r}
-cond <- (municipio == 15)  # código de INE para Coruña
+cond <- (municipio == 15) # código de INE para Coruña
 
-var <- 'Provincia'
-VIM::marginplot(diario_as[, c(str_to_lower(var), 'valor')], xlab=var,
-                ylab='As (ng/m^3)', pch=16, cex.numbers=.9)
+var <- "Provincia"
+VIM::marginplot(diario_as[, c(str_to_lower(var), "valor")],
+  xlab = var,
+  ylab = "As (ng/m^3)", pch = 16, cex.numbers = .9
+)
 ````
 
 De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
