@@ -3,49 +3,64 @@
 #' subtitle: Tema 1, MITECO
 #' author: [S. E. Elizabet, M. R. Nicolás]
 #' date: \today
-#' toc: true
-#' toc_depth: 2
 #' fontsize: 12pt
-#' number_sections: true
 #' fig_width: 7
 #' fig_height: 6
 #' fig_caption: true
 #' df_print: tibble  # print.data.frame(default)/kable/tibble
 #' highlight: tango
-#' latex_engine: pdflatex
-#' abstract: Aquí definimos el trabajo realizado en un pequeño resumen.
 #' header-includes:
 #' - \usepackage{fvextra}
 #' - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
 #' - \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+#' output:
+#'   pdf_document:
+#'     latex_engine: pdflatex
+#'     number_sections: yes
+#'     toc: yes
+#'     toc_depth: 2
 #' ---
 #'
 #' ```{r setup, include=FALSE}
-#' knitr::opts_chunk$set(echo=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=75))
-#' knitr::spin("trabajo.R", knit=FALSE)
+#' knitr::opts_chunk$set(
+#'    echo=FALSE,
+#'    tidy=TRUE,
+#'    tidy.opts=list(width.cutoff=75),
+#'    knit=FALSE
+#' )
+#' knitr::spin(
+#'    "trabajo.R",
+#'    format = "Rmd",
+#'    knit = FALSE
+#' )
 #' ```
 
 library(mice, warn.conflicts = FALSE)
 library(naniar, warn.conflicts = FALSE)
 
 source("miteco.R")
-attach(diario_as)
 
 #'
 #' \newpage
 #'
 #' # Introducción y objetivo
 #'
-#' Los mecanismos de identificación del tipo de datos faltantes es un tema que
-#' resulta necesario en muchos trabajos reales en los que se aplica la
+#' Los mecanismos de identificación del tipo de datos faltantes son herramientas
+#' que resultan muy útiles en muchos trabajos reales en los que se aplica la
 #' estadística.
-#' El objetivo del trabajo es hacer tanto una exploración de los datos como un
-#' análisis de datos faltantes, indicando si el mecanismo de ausencia es MCAR,
+#' El objetivo de este trabajo es hacer tanto una exploración de los datos como
+#' un análisis de datos faltantes, indicando si el mecanismo de ausencia es MCAR,
 #' MAR o MNAR.
 #'
 #'
 #' # Datos
 #'
+#' Los datos que utilizaremos en este trabajo contienen información sobre mediciones
+#' para evaluar la calidad del aire en diferentes puntos de muestreo. En nuestro
+#' caso, utilizaremos únicamente las mediciones de arsénico (As) del 2022 y 2023.
+#' Estos datos son públicos y se pueden obtener en la sección
+#' [**Datos de Calidad del Aire**](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos.html)
+#' en la página web del MITECO.
 #' Al cargar los datos por primera vez pudimos observar que los datos contenían
 #' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
 #' cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
@@ -64,7 +79,7 @@ attach(diario_as)
 #' `punto_muestreo` a `factor`.
 #'
 #'
-#' ## Diccionario de variables de `diario_as`
+#' ## Diccionario de variables
 #' A continuación se muestra una tabla de guía para las variables del *tibble*
 #' `diario_as`.
 #'
@@ -78,7 +93,7 @@ attach(diario_as)
 #' | `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
 #'
 #'
-#' # Distribución de los valores y nulos
+#' ## Distribución de los valores y nulos
 #'
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
 #' concentración diaria de arsénico:
@@ -92,7 +107,7 @@ summary(diario_as)
 #' Si mostramos la distribución de los valores de la misma, observamos que
 #' efectivamente, la mayoría de valores se aproximan al 0.
 
-hist(valor,
+hist(diario_as$valor,
   breaks = "FD", col = "black", main = "Arsénico observado",
   xlab = "Concentración de arsénico", ylab = "Frecuencia", freq = TRUE
 )
@@ -103,8 +118,8 @@ hist(valor,
 #' por año:
 
 
-anio <- format(fecha, "%Y")
-ausente <- is.na(valor)
+anio <- format(diario_as$fecha, "%Y")
+ausente <- is.na(diario_as$valor)
 
 tabla.anios <- data.frame(
   n = as.vector(table(anio)),
@@ -118,8 +133,6 @@ tabla.anios
 #' Podemos visualizar también la distribución temporal de nulos.
 #' Lo haremos en el municipio de Coruña para no saturar la gráfica:
 
-cond <- (municipio == 15) # código de INE para Coruña
-
 var <- "Provincia"
 VIM::marginplot(diario_as[, c(str_to_lower(var), "valor")],
   xlab = var,
@@ -128,7 +141,20 @@ VIM::marginplot(diario_as[, c(str_to_lower(var), "valor")],
 
 #' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
 #' de todo el rango de valores.
-
-
-detach(diario_as)
-
+#'
+#'
+#' # Métodos
+#'
+#'
+#'
+#' # Resultados
+#'
+#'
+#'
+#' # Discusión
+#'
+#'
+#'
+#' # Reproducibilidad
+#'
+#'
