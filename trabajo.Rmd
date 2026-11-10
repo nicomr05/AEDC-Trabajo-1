@@ -170,13 +170,13 @@ descartarlo.
 por_punto <- diario_as %>%
   group_by(punto_muestreo) %>%
   summarise(
-    dias = n(),                       # filas (días) que tiene ese punto
-    con_valor = sum(!is.na(valor)),   # de ellas, cuántas tienen valor
+    dias = n(), # filas (días) que tiene ese punto
+    con_valor = sum(!is.na(valor)), # de ellas, cuántas tienen valor
     .groups = "drop"
   )
 
-n_puntos <- nrow(por_punto)  # puntos de muestreo en total
-n_puntos_sin_valores <- sum(por_punto$con_valor == 0)  # puntos sin ni un solo valor
+n_puntos <- nrow(por_punto) # puntos de muestreo en total
+n_puntos_sin_valores <- sum(por_punto$con_valor == 0) # puntos sin ni un solo valor
 
 data.frame(n_puntos, n_puntos_sin_valores, row.names = "n")
 ````
@@ -188,14 +188,16 @@ descubrir si existe algún patrón de medición (diario, semanal, etc.).
 
 ````{r}
 intervalos <- diario_as %>%
-  filter(!is.na(valor)) %>%               # solo días con medida
-  arrange(punto_muestreo, fecha) %>%      # ordenados dentro de cada punto
+  filter(!is.na(valor)) %>% # solo días con medida
+  arrange(punto_muestreo, fecha) %>% # ordenados dentro de cada punto
   group_by(punto_muestreo) %>%
-  mutate(dif = as.integer(fecha - lag(fecha))) %>%  # días desde la medida anterior
+  mutate(dif = as.integer(fecha - lag(fecha))) %>% # días desde la medida anterior
   ungroup() %>%
-  filter(!is.na(dif))                     # quitamos la primera medida de cada punto
+  filter(!is.na(dif)) # quitamos la primera medida de cada punto
 
-intervalos %>% count(dif, sort = TRUE) %>% head(10)
+intervalos %>%
+  count(dif, sort = TRUE) %>%
+  head(10)
 ````
 
 

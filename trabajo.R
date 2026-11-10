@@ -61,7 +61,7 @@ source("miteco.R")
 #' Estos datos son públicos y se pueden obtener en la sección
 #' [**Datos de Calidad del Aire**](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos.html)
 #' en la página web del MITECO.
-#' 
+#'
 #' Al cargar los datos por primera vez pudimos observar que los datos contenían
 #' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
 #' cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
@@ -147,10 +147,10 @@ VIM::marginplot(diario_as[, c(stringr::str_to_lower(var), "valor")],
 
 #' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
 #' de todo el rango de valores.
-#' 
-#' 
+#'
+#'
 #' ## Estructura de la ausencia
-#' 
+#'
 #' Podemos también realizar un análisis de los puntos de muestreo, para
 #' comprobar si existe alguno que no contenga mediciones nunca, para poder
 #' descartarlo.
@@ -158,30 +158,32 @@ VIM::marginplot(diario_as[, c(stringr::str_to_lower(var), "valor")],
 por_punto <- diario_as %>%
   group_by(punto_muestreo) %>%
   summarise(
-    dias = n(),                       # filas (días) que tiene ese punto
-    con_valor = sum(!is.na(valor)),   # de ellas, cuántas tienen valor
+    dias = n(), # filas (días) que tiene ese punto
+    con_valor = sum(!is.na(valor)), # de ellas, cuántas tienen valor
     .groups = "drop"
   )
 
-n_puntos <- nrow(por_punto)  # puntos de muestreo en total
-n_puntos_sin_valores <- sum(por_punto$con_valor == 0)  # puntos sin ni un solo valor
+n_puntos <- nrow(por_punto) # puntos de muestreo en total
+n_puntos_sin_valores <- sum(por_punto$con_valor == 0) # puntos sin ni un solo valor
 
 data.frame(n_puntos, n_puntos_sin_valores, row.names = "n")
 
 #' Concluimos, por tanto, que no existen puntos de muestreo sin ningún valor.
-#' 
+#'
 #' A continuación, observaremos la distancia entre las mediciones, para intentar
 #' descubrir si existe algún patrón de medición (diario, semanal, etc.).
 
 intervalos <- diario_as %>%
-  filter(!is.na(valor)) %>%               # solo días con medida
-  arrange(punto_muestreo, fecha) %>%      # ordenados dentro de cada punto
+  filter(!is.na(valor)) %>% # solo días con medida
+  arrange(punto_muestreo, fecha) %>% # ordenados dentro de cada punto
   group_by(punto_muestreo) %>%
-  mutate(dif = as.integer(fecha - lag(fecha))) %>%  # días desde la medida anterior
+  mutate(dif = as.integer(fecha - lag(fecha))) %>% # días desde la medida anterior
   ungroup() %>%
-  filter(!is.na(dif))                     # quitamos la primera medida de cada punto
+  filter(!is.na(dif)) # quitamos la primera medida de cada punto
 
-intervalos %>% count(dif, sort = TRUE) %>% head(10)
+intervalos %>%
+  count(dif, sort = TRUE) %>%
+  head(10)
 
 #'
 #'
