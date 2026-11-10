@@ -3,8 +3,8 @@
 #' subtitle: Tema 1, MITECO
 #' author: [S. E. Elizabet, M. R. Nicolás]
 #' date: \today
-#' fontsize: 12pt
-#' fig_width: 7
+#' fontsize: 11pt
+#' fig_width: \textwidth
 #' fig_height: 6
 #' fig_caption: true
 #' df_print: tibble  # print.data.frame(default)/kable/tibble
@@ -61,6 +61,7 @@ source("miteco.R")
 #' Estos datos son públicos y se pueden obtener en la sección
 #' [**Datos de Calidad del Aire**](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos.html)
 #' en la página web del MITECO.
+#' 
 #' Al cargar los datos por primera vez pudimos observar que los datos contenían
 #' 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
 #' cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
@@ -68,13 +69,19 @@ source("miteco.R")
 #' Debido a esto, la variable `D31` tendrá un nulo en los meses que tengan 30 días.
 #' De manera similar, en febrero habrá nulos en los días 30 y 31, además de el 29
 #' en años bisiestos.
-#' Se puede observar además que estas últimas son las únicas variables con valores
-#' faltantes.
+#' Es decir, que todas las ausencias son reales, pero estas últimas que tratamos
+#' son sistemáticas, por la forma de guardar los datos. El resto de ausencias son
+#' intrínsecas a los datos.
 #'
 #' Dado que la falta de estos valores se da únicamente por la forma de guardar los
 #' datos, decidimos convertir las 31 variables en una columna `valor` (de tipo
 #' `numeric`) y crear a su vez una columna `fecha` (de tipo `Date`) a partir de
-#' los valores de `ANNO`, `MES` y `DXX`.
+#' los valores de `ANNO`, `MES` y `DXX`, de manera que se eliminan los días
+#' que no existen.
+#' Podemos observar que `valor` es la única variable con nulos mediante `colMeans()`:
+
+colMeans(is.na(diario_as))
+
 #' Además, convertimos las variables `provincia`, `municipio`, `estacion`,
 #' `punto_muestreo` a `factor`.
 #'
@@ -89,7 +96,7 @@ source("miteco.R")
 #' | `municipio` | Código INE del municipio dentro de la provincia (3 dígitos). Para identificarlo del todo hay que combinarlo con `provincia`. |
 #' | `estacion` | Número de la estación de medición dentro del municipio. Una estación es una caseta con varios equipos. |
 #' | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
-#' | `fecha` | Fecha en la que se realizó la observación |
+#' | `fecha` | Fecha en la que se realizó la observación. |
 #' | `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
 #'
 #'
@@ -131,16 +138,51 @@ tabla.anios <- data.frame(
 tabla.anios
 
 #' Podemos visualizar también la distribución temporal de nulos.
-#' Lo haremos en el municipio de Coruña para no saturar la gráfica:
 
 var <- "Provincia"
-VIM::marginplot(diario_as[, c(str_to_lower(var), "valor")],
+VIM::marginplot(diario_as[, c(stringr::str_to_lower(var), "valor")],
   xlab = var,
-  ylab = "As (ng/m^3)", pch = 16, cex.numbers = .9
+  ylab = "As (ng/m³)", pch = 16, cex.numbers = .9
 )
 
 #' De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
 #' de todo el rango de valores.
+#' 
+#' 
+#' ## Estructura de la ausencia
+#' 
+#' Podemos también realizar un análisis de los puntos de muestreo, para
+#' comprobar si existe alguno que no contenga mediciones nunca, para poder
+#' descartarlo.
+
+por_punto <- diario_as %>%
+  group_by(punto_muestreo) %>%
+  summarise(
+    dias = n(),                       # filas (días) que tiene ese punto
+    con_valor = sum(!is.na(valor)),   # de ellas, cuántas tienen valor
+    .groups = "drop"
+  )
+
+n_puntos <- nrow(por_punto)  # puntos de muestreo en total
+n_puntos_sin_valores <- sum(por_punto$con_valor == 0)  # puntos sin ni un solo valor
+
+data.frame(n_puntos, n_puntos_sin_valores, row.names = "n")
+
+#' Concluimos, por tanto, que no existen puntos de muestreo sin ningún valor.
+#' 
+#' A continuación, observaremos la distancia entre las mediciones, para intentar
+#' descubrir si existe algún patrón de medición (diario, semanal, etc.).
+
+intervalos <- diario_as %>%
+  filter(!is.na(valor)) %>%               # solo días con medida
+  arrange(punto_muestreo, fecha) %>%      # ordenados dentro de cada punto
+  group_by(punto_muestreo) %>%
+  mutate(dif = as.integer(fecha - lag(fecha))) %>%  # días desde la medida anterior
+  ungroup() %>%
+  filter(!is.na(dif))                     # quitamos la primera medida de cada punto
+
+intervalos %>% count(dif, sort = TRUE) %>% head(10)
+
 #'
 #'
 #' # Métodos
