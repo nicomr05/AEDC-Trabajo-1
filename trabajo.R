@@ -185,6 +185,11 @@ intervalos %>%
   count(dif, sort = TRUE) %>%
   head(10)
 
+#' 
+#' Test de Little para MCAR:
+
+naniar::mcar_test(diario_as)
+
 #'
 #'
 #' # Métodos

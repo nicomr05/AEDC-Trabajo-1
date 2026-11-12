@@ -201,6 +201,13 @@ intervalos %>%
 ````
 
 
+Test de Little para MCAR:
+
+````{r}
+naniar::mcar_test(diario_as)
+````
+
+
 
 # Métodos
 
