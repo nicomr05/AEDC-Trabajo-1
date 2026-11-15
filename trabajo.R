@@ -188,7 +188,14 @@ intervalos %>%
 #' 
 #' Test de Little para MCAR:
 
+naniar::mcar_test(diario_as[c("punto_muestreo","provincia","municipio","estacion","valor")])
+
 naniar::mcar_test(diario_as)
+
+#' Según el test de Little, existe evidencia suficiente para rechazar
+#' la hipótesis de que la ausencia provenga de un mecanismo MCAR tanto con todas
+#' las variables como cuando no se tiene en cuenta la dependencia temporal (no
+#' metemos la variable fecha en el test).
 
 #'
 #'
