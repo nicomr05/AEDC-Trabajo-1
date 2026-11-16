@@ -214,12 +214,11 @@ diario_as <- diario_as %>%
     )
   )
 
-# Filas para las cuales su fecha es mayor que la fecha_fin de la estación correspondiente.
-estaciones <- diario_as %>%
+# Eliminamos las filas para las cuales su fecha es mayor que la fecha_fin de la estación correspondiente
+diario_as <- diario_as %>%
   filter(
-    !is.na(fecha_fin),
-    fecha_fin >= as.Date("2022-01-01"),
-    fecha_fin <= as.Date("2023-12-31"),
-    fecha > fecha_fin
-  ) %>%
-  group_by(nombre_estacion)
+    is.na(fecha_fin) |
+      fecha <= fecha_fin |
+      fecha_fin < as.Date("2022-01-01") |
+      fecha_fin > as.Date("2023-12-31")
+  )

@@ -83,13 +83,16 @@ source("miteco.R")
 #' los valores de `ANNO`, `MES` y `DXX`, de manera que se eliminan los días
 #' que no existen.
 #'
-#' Además, hemos incorporado la metainformación oficial de las estaciones proporcionada por el MITECO
-#' para cada año, relacionándola con las mediciones mediante el código de estación.
+#' Además, hemos incorporado la metainformación oficial de las estaciones proporcionada
+#' por el MITECO para cada año, relacionándola con las mediciones mediante el código
+#' de estación.
 #' De esta forma, disponemos de los nombres de las estaciones, comunidades
 #' autónomas, provincias y municipios, así como su tipo de estación,
 #' tipo de área y zona.
-#' También hemos conservado las fechas de alta y baja de las estaciones para comprobar más adelante
-#' si algunas ausencias pueden estar relacionadas con sus períodos de actividad.
+#' También hemos conservado las fechas de alta y baja de las estaciones para comprobar
+#' más adelante si algunas ausencias pueden estar relacionadas con sus períodos de actividad.
+#' De hecho, 17 de las filas de la tabla contenían filas con `valor` a nulo, en
+#' las que se cumplía que `fecha` > `fecha_fin`, por lo que las eliminamos también.
 #'
 #' Haciendo `colMeans()` podemos identificar que, las ausencias no aparecen únicamente en
 #' `valor`, sino también en `fecha_fin`, que indica la fecha de baja
