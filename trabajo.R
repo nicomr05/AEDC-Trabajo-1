@@ -497,35 +497,93 @@ datos_little <- data.frame(
 
 naniar::mcar_test(datos_little)
 
-#'
 #' ### Regresión logística
 #'
-#' Ajustamos un modelo de regresión logística para investigar si
-#' la ausencia de arsénico se relaciona con el mes, el año y
-#' las características observadas de las estaciones.
+#' Ajustamos una regresión logística para investigar si las ausencias
+#' están relacionadas con variables observadas. Creamos un indicador
+#' de ausencia y extraemos el mes, el año y el día de la semana.
+#' Esta última variable nos permitirá investigar si existe alguna
+#' relación con la periodicidad de las mediciones.
 
 datos_log <- diario_as %>%
   mutate(
     ausente = is.na(valor),
     mes = factor(format(fecha, "%m")),
-    anio = factor(format(fecha, "%Y"))
+    anio = factor(format(fecha, "%Y")),
+    dia_semana = factor(weekdays(fecha))
   )
 
+#' Comenzamos con un modelo que incluye las variables temporales,
+#' geográficas y las características de las estaciones.
+#' Utilizamos `drop1()` para evaluar la contribución de cada variable,
+#' mediante contrastes de razón de verosimilitudes, con un nivel
+#' de significación del 5 %.
+
 modelo <- glm(
-  ausente ~ mes + anio + tipo_estacion + tipo_area + provincia + zona,
+  ausente ~ mes + anio + tipo_estacion + tipo_area +
+    provincia + zona + dia_semana,
   data = datos_log,
   family = binomial()
 )
-
-summary(modelo)
 
 drop1(modelo, test = "Chisq")
 
+#' El año presenta el mayor valor p (0,781), por lo que lo
+#' eliminamos al no aportar información significativa al modelo
+#' una vez consideradas las demás variables.
+
+modelo2 <- update(modelo, . ~ . - anio)
+
+drop1(modelo2, test = "Chisq")
+
+#' Tras eliminar el año, `tipo_area` presenta el mayor valor p
+#' (0,062), superior al 5 %. Por tanto, también la eliminamos
+#' y volvemos a comprobar la significación de las variables.
+
+modelo3 <- update(modelo2, . ~ . - tipo_area)
+
+drop1(modelo3, test = "Chisq")
+
+#' Todas las variables restantes resultan significativas:
+#' `mes`, `tipo_estacion`, `provincia`, `zona` y `dia_semana`.
+#' Destacan especialmente las diferencias geográficas y la
+#' asociación entre el día de la semana y la ausencia de mediciones.
+#' Esta última podría estar relacionada con los calendarios de
+#' muestreo, aunque no conocemos la programación de cada estación.
+
+#' A continuación, ajustamos otro modelo sustituyendo las
+#' características generales de las estaciones por el identificador
+#' del punto de muestreo. Queremos comprobar si conocer el punto
+#' concreto aporta más información sobre las ausencias que las características 
+#' que lo representan.
+
 modelo_puntos <- glm(
-  ausente ~ mes + anio + punto_muestreo,
+  ausente ~ mes + punto_muestreo + dia_semana,
   data = datos_log,
   family = binomial()
 )
 
-anova(modelo, modelo_puntos, test = "Chisq")
+drop1(modelo_puntos, test = "Chisq")
+
+#' Las tres variables resultan significativas. El punto de
+#' muestreo presenta la mayor contribución al ajuste, aunque
+#' el día de la semana también muestra una asociación importante.
+#' Esto sugiere que tanto el punto concreto como la distribución
+#' semanal pueden influir en la disponibilidad de mediciones.
+
+#' Finalmente, comparamos ambos modelos mediante el AIC, que
+#' penaliza la complejidad y permite comparar sus ajustes.
+
+AIC(modelo3, modelo_puntos)
+
+#' El modelo por puntos obtiene un AIC de 86482,64, frente a
+#' 91385,24 del modelo general. Por tanto, ofrece un mejor ajuste
+#' penalizado, incluso teniendo un mayor número de parámetros.
+#'
+#' En conjunto, encontramos asociaciones entre las ausencias y
+#' variables observadas, lo que aporta evidencia contraria a MCAR.
+#' No obstante, los modelos no permiten confirmar MAR ni descartar
+#' MNAR. Además, las observaciones repetidas por estación pueden
+#' presentar dependencia temporal, por lo que los valores p deben
+#' interpretarse con cautela.
 
