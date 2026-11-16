@@ -144,20 +144,6 @@ tabla.anios
 
 #' Podemos visualizar también las ausencias según provincias.
 
-
-  nombres_prov <- c(
-    "Álava", "Albacete", "Alicante", "Almería", "Ávila",
-    "Badajoz", "Illes Balears", "Barcelona", "Burgos", "Cáceres",
-    "Cádiz", "Castellón", "Ciudad Real", "Córdoba", "A Coruña",
-    "Cuenca", "Girona", "Granada", "Guadalajara", "Gipuzkoa",
-    "Huelva", "Huesca", "Jaén", "León", "Lleida",
-    "La Rioja", "Lugo", "Madrid", "Málaga", "Murcia",
-    "Navarra", "Ourense", "Asturias", "Palencia", "Las Palmas",
-    "Pontevedra", "Salamanca", "Santa Cruz de Tenerife",
-    "Cantabria", "Segovia", "Sevilla", "Soria", "Tarragona",
-    "Teruel", "Toledo", "Valencia", "Valladolid", "Bizkaia",
-    "Zamora", "Zaragoza", "Ceuta", "Melilla"
-  )
   
   diario_as$nombre_prov <- factor(
     nombres_prov[as.integer(as.character(diario_as$provincia))]
