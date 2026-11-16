@@ -185,6 +185,20 @@ tabla.anios
   
   print(tabla_puntos)
   hist(tabla_puntos$porcentaje_NA)
+  
+# Ausencias según tipo de estación
+  round(100 * tapply(
+    is.na(diario_as$valor),
+    diario_as$tipo_estacion,
+    mean
+  ), 2)
+  
+# Ausencias según tipo de área
+  round(100 * tapply(
+    is.na(diario_as$valor),
+    diario_as$tipo_area,
+    mean
+  ), 2)
 # Porcentaje de ausencias según mes y año
   par(mfrow = c(2, 2))
   
@@ -240,7 +254,8 @@ tabla.anios
   }
   
   par(mfrow = c(1, 1))
-#'
+
+  
 #' ## Estructura de la ausencia
 #'
 #' Podemos también realizar un análisis de los puntos de muestreo, para

@@ -207,8 +207,6 @@ stopifnot(nrow(diario_as) == n_original)
 diario_as <- diario_as %>%
   select(-anio, -cod_local) %>%
   mutate(
-    across(c(provincia, municipio, estacion, punto_muestreo),
-           as.character),
     across(c(tipo_estacion, tipo_area, zona),
            factor)
   )
