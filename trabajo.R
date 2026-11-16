@@ -3,7 +3,7 @@
 #' subtitle: Tema 1, MITECO
 #' author: [S. E. Elizabet, M. R. Nicolás]
 #' date: \today
-#' fontsize: 11pt
+#' fontsize: 10pt
 #' fig_width: \textwidth
 #' fig_height: 6
 #' fig_caption: true
@@ -109,7 +109,7 @@ source("miteco.R")
 #' Para el análisis creamos `diario_as_final`, excluyendo las fechas
 #' administrativas.
 
-colMeans(is.na(diario_as))[c("valor","fecha_fin")]
+colMeans(is.na(diario_as))[c("valor", "fecha_fin")]
 # Excluimos las fechas administrativas para el análisis de patrones
 diario_as_final <- diario_as[1:13]
 
@@ -205,8 +205,6 @@ tabla_municipios <- diario_as %>%
   ) %>%
   arrange(desc(porcentaje_NA))
 
-print(tabla_municipios)
-
 #' Para resumir la distribución de las tasas de ausencia entre municipios,
 #' representamos un histograma de sus porcentajes.
 
@@ -239,8 +237,6 @@ tabla_puntos <- diario_as_final %>%
   ) %>%
   arrange(desc(porcentaje_NA))
 
-print(tabla_puntos, n = 15)
-
 #' Representamos la distribución de los porcentajes de ausencia entre
 #' puntos de muestreo para comprobar si predominan tasas similares
 #' o si existe una gran heterogeneidad entre las series.
@@ -261,7 +257,7 @@ hist(tabla_puntos$porcentaje_NA,
 #' Primero mostramos el número de registros de cada categoría y
 #' después calculamos sus correspondientes porcentajes de ausencia.
 
-# Ausencias según tipo de estación
+#' Ausencias según tipo de estación:
 table(diario_as_final$tipo_estacion)
 
 round(100 * tapply(
@@ -270,7 +266,7 @@ round(100 * tapply(
   mean
 ), 2)
 
-# Ausencias según tipo de área
+#' Ausencias según tipo de área
 table(diario_as_final$tipo_area)
 
 round(100 * tapply(
@@ -289,9 +285,9 @@ round(100 * tapply(
 #' el 80 % y el 90 %.
 #'
 #' También observamos diferencias según el tipo de estación: las de
-#' fondo presentan un 75 % de ausencias, frente al 66,8 % de las de
+#' fondo presentan un 75 % de ausencias, frente al 66.8 % de las de
 #' tráfico. Por tipo de área, las estaciones rurales presentan el
-#' mayor porcentaje de ausencia (78,04 %).
+#' mayor porcentaje de ausencia (78.04 %).
 #'
 #' Por tanto, la ausencia de mediciones parece estar asociada con
 #' características geográficas de las estaciones. Más adelante estudiaremos si
@@ -330,19 +326,22 @@ por_mes <- round(
 por_mes
 
 matplot(1:12, t(por_mes),
-        type = "b", pch = 16, lty = 1,
-        col = c("steelblue4", "firebrick3"),
-        xaxt = "n",
-        xlab = "Mes",
-        ylab = "% de ausencias",
-        main = "Ausencias mensuales de arsénico",
-        ylim = c(0,100))
-        
+  type = "b", pch = 16, lty = 1,
+  col = c("steelblue4", "firebrick3"),
+  xaxt = "n",
+  xlab = "Mes",
+  ylab = "% de ausencias",
+  main = "Ausencias mensuales de arsénico",
+  ylim = c(0, 100)
+)
+
 
 axis(1, at = 1:12, labels = month.abb)
-legend("topright", legend = rownames(por_mes),
-       col = c("steelblue4", "firebrick3"),
-       lty = 1, pch = 16)
+legend("topright",
+  legend = rownames(por_mes),
+  col = c("steelblue4", "firebrick3"),
+  lty = 1, pch = 16
+)
 
 #' Los porcentajes mensuales de ausencia son similares en ambos años,
 #' sin observarse un patrón estacional claramente repetido.
@@ -471,32 +470,50 @@ intervalos <- diario_as %>%
   ungroup() %>%
   filter(!is.na(dif)) # quitamos la primera medida de cada punto
 
-intervalos %>%
+t(intervalos %>%
   count(dif, sort = TRUE) %>%
-  head(10)
+  head(10))
 
 #' Los intervalos más frecuentes entre mediciones consecutivas son
 #' de 1, 2 y 6 días. Esto sugiere que podrían existir diferentes
 #' periodicidades de muestreo según el punto de medición.
 #' Por tanto, parte de las ausencias podría corresponder a días
 #' en los que no estaba programada una medición.
-#' 
+#'
 #' ## Análisis del mecanismo de ausencia
 #'
-#' ### Test de Little 
+#' ### Test de Little
 #' Aplicamos el test de Little para contrastar la hipótesis de
 #' ausencia completamente aleatoria (MCAR).
-#' Incorporamos un índice temporal, calculado a partir de la fecha,
-#' para investigar si la ausencia está relacionada con el tiempo.
+#' Incorporamos un índice temporal (`fecha`) para investigar si la ausencia está
+#' relacionada con el tiempo.
 
-datos_little <- data.frame(
-  valor = diario_as$valor,
-  indice_fecha = as.integer(diario_as$fecha -
-                              min(diario_as$fecha)) + 1
-)
+naniar::mcar_test(diario_as_final[c("fecha", "valor")])
 
-naniar::mcar_test(datos_little)
+#' Con un nivel de significación del 0.05, el test de Little no nos permite rechazar
+#' la situación MCAR.
+#' Sin embargo, si introducimos información espacial podemos observar que el test
+#' rechaza claramente, por ejemplo por comunidad autónoma:
 
+naniar::mcar_test(diario_as_final[c("nombre_ccaa", "valor")])
+
+#' De manera similar, por zona:
+
+naniar::mcar_test(diario_as_final[c("zona", "valor")])
+
+#' Finalmente, como demostración general, si realizamos el test a todas las variables
+#'
+#' lógicamente también se rechaza MCAR:
+
+naniar::mcar_test(diario_as_final)
+
+#' Por tanto, guiándonos por estos resultados podemos decir que parecen existir
+#' evidencias para rechazar MCAR para este conjunto de datos.
+#'
+#' En la siguiente sección intentaremos ajustar un modelo de regresión logística
+#' y evaluar si la ausencia es explicable por algunas de las variables.
+#'
+#'
 #' ### Regresión logística
 #'
 #' Ajustamos una regresión logística para investigar si las ausencias
@@ -554,7 +571,7 @@ drop1(modelo3, test = "Chisq")
 #' A continuación, ajustamos otro modelo sustituyendo las
 #' características generales de las estaciones por el identificador
 #' del punto de muestreo. Queremos comprobar si conocer el punto
-#' concreto aporta más información sobre las ausencias que las características 
+#' concreto aporta más información sobre las ausencias que las características
 #' que lo representan.
 
 modelo_puntos <- glm(
@@ -586,4 +603,86 @@ AIC(modelo3, modelo_puntos)
 #' MNAR. Además, las observaciones repetidas por estación pueden
 #' presentar dependencia temporal, por lo que los valores p deben
 #' interpretarse con cautela.
+
+#' # Conclusiones
+#'
+#' En este trabajo hemos analizado las ausencias en las mediciones
+#' diarias de arsénico publicadas por el MITECO para 2022 y 2023.
+#' De las 84090 observaciones estudiadas, 61233 presentan valores
+#' ausentes, lo que representa aproximadamente el 72.82 %.
+#'
+#' La exploración muestra que las ausencias no se distribuyen
+#' de manera uniforme. Existen diferencias importantes entre
+#' provincias, municipios y puntos de muestreo, así como según
+#' el tipo de estación y su entorno. Por ejemplo, las estaciones
+#' de fondo presentan un 75 % de ausencias, frente al 66.8 %
+#' de las estaciones de tráfico.
+#'
+#' En cambio, los porcentajes mensuales y anuales son relativamente
+#' similares, sin que se observe una tendencia temporal clara.
+#' También encontramos que los intervalos más frecuentes entre
+#' mediciones consecutivas son de 1, 2 y 6 días, lo que sugiere
+#' la posible existencia de distintas periodicidades de muestreo.
+#'
+#' Respecto al mecanismo de ausencia, el test de Little aplicado
+#' con un índice temporal obtuvo un $p$-valor de 0.359, por lo que
+#' no se rechazó MCAR en ese contraste. Sin embargo, el test no
+#' incorporaba las características de las estaciones y presenta
+#' limitaciones por los supuestos estadísticos de los datos.
+#'
+#' Por otro lado, las regresiones logísticas encontraron asociaciones
+#' significativas entre la ausencia y variables observadas, como
+#' el mes, la provincia, el tipo de estación y la zona.
+#' El modelo que incorpora el punto de muestreo concreto presentó
+#' un AIC considerablemente menor que el modelo general, indicando
+#' un mejor ajuste penalizado.
+#' Estos resultados aportan evidencia contraria al supuesto MCAR
+#' y sugieren que la disponibilidad de mediciones está especialmente
+#' relacionada con el lugar y punto donde se realizan.
+#'
+#' Para interpretar estas ausencias, también consultamos la
+#' documentación oficial del MITECO. Según el documento
+#' *Fichero intercambio CSV: Formato y estructura*, un valor vacío
+#' puede deberse a que el dato no sea válido o a que no se haya
+#' realizado una medición durante ese período.
+#'
+#' Además, el *Informe metodológico estandarizado* indica que
+#' la recogida de datos puede tener periodicidad horaria, diaria,
+#' semanal o mensual, y describe procedimientos de validación
+#' y control de las mediciones.
+#'
+#' Por tanto, parte de las ausencias podría estar relacionada
+#' con calendarios de muestreo diferentes entre estaciones,
+#' mientras que otras podrían proceder de mediciones no válidas.
+#' Esta explicación es coherente con las diferencias entre puntos
+#' y los intervalos observados en nuestro análisis.
+#'
+#' Sin embargo, los archivos no permiten distinguir qué valores
+#' vacíos corresponden a mediciones no programadas y cuáles a
+#' datos invalidados o perdidos.
+#'
+#' En conclusión, encontramos evidencia de que la ausencia de
+#' mediciones no es completamente aleatoria respecto a las
+#' variables observadas. Un mecanismo MAR resulta plausible
+#' si las ausencias pueden explicarse por características
+#' conocidas de las estaciones y sus calendarios de muestreo.
+#' No obstante, no podemos confirmar MAR ni descartar MNAR,
+#' puesto que desconocemos si la ausencia también depende
+#' de las concentraciones de arsénico no observadas.
+#'
+#'
+#' # Referencias
+#'
+#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
+#'   [Fichero intercambio CSV: Formato y estructura](https://miteco.gob.es/content/dam/miteco/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/formatodatoscsvmiteco_web_tcm30-501420.pdf).
+#'
+#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
+#'   [Estadística de Calidad del Aire: Informe metodológico estandarizado](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/ims_7104_ca_v1_tcm30-502328.pdf).
+#'
+#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
+#'   [Datos oficiales de calidad del aire de 2022](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2022.html).
+#'
+#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
+#'   [Datos oficiales de calidad del aire de 2023](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2023.html).
+#'
 
