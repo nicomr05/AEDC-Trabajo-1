@@ -116,31 +116,32 @@ archivos_meta <- c(
 convertir_fecha <- function(x) {
   x <- trimws(as.character(x))
   x[x == ""] <- NA_character_
-  
+
   fecha <- as.Date(x, format = "%d/%m/%Y")
-  
+
   i <- is.na(fecha) & !is.na(x)
   fecha[i] <- as.Date(substr(x[i], 1, 10),
-                      format = "%Y-%m-%d")
-  
+    format = "%Y-%m-%d"
+  )
+
   i <- is.na(fecha) & grepl("^[0-9]{4,5}$", x)
   fecha[i] <- as.Date(as.numeric(x[i]),
-                      origin = "1899-12-30")
-  
+    origin = "1899-12-30"
+  )
+
   fecha
 }
 
 # Leer la hoja de estaciones correspondiente a cada año
 leer_estaciones <- function(anio) {
-  
   meta <- read_excel(
     archivos_meta[as.character(anio)],
     sheet = paste0("Estaciones", anio),
     col_types = "text"
   )
-  
+
   names(meta) <- toupper(trimws(names(meta)))
-  
+
   meta %>%
     filter(!is.na(COD_LOCAL)) %>%
     transmute(
@@ -207,6 +208,9 @@ stopifnot(nrow(diario_as) == n_original)
 diario_as <- diario_as %>%
   select(-anio, -cod_local) %>%
   mutate(
-    across(c(tipo_estacion, tipo_area, zona),
-           factor)
+    across(
+      c(tipo_estacion, tipo_area, zona),
+      factor
+    )
   )
+

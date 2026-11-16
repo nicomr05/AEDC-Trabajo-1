@@ -37,6 +37,7 @@
 
 library(mice, warn.conflicts = FALSE)
 library(naniar, warn.conflicts = FALSE)
+library(tibble, warn.conflicts = FALSE)
 
 source("miteco.R")
 
@@ -122,9 +123,9 @@ hist(diario_as$valor,
 
 mice::md.pattern(diario_as)
 
-#' Como era de esperar, la función `mice::md.pattern()` muestra un patrón de ausencia univariante, 
-#' ya que `valor` es la única variable que presenta datos faltantes. 
-#' Las restantes variables están completamente observadas y contienen información 
+#' Como era de esperar, la función `mice::md.pattern()` muestra un patrón de ausencia univariante,
+#' ya que `valor` es la única variable que presenta datos faltantes.
+#' Las restantes variables están completamente observadas y contienen información
 #' temporal y geográfica que podremos utilizar para investigar posibles asociaciones con la ausencia de concentración de arsénico.
 #' Igualmente, dentro de esta variable podemos ver el conteo de nulos, por ejemplo
 #' por año:
@@ -144,118 +145,147 @@ tabla.anios
 
 #' Podemos visualizar también las ausencias según provincias.
 
-  
-  diario_as$nombre_prov <- factor(
-    nombres_prov[as.integer(as.character(diario_as$provincia))]
-  )
-  
-  naniar::gg_miss_fct(
-    diario_as[, c("nombre_prov", "valor")],
-    fct = nombre_prov
-  ) + ggplot2::coord_flip()
-  
-  # Ausencias según municipio
-  
-  tabla_municipios <- diario_as %>%
-    group_by(provincia, municipio) %>%
-    summarise(
-      n = n(),
-      observados = sum(!is.na(valor)),
-      ausentes = sum(is.na(valor)),
-      porcentaje_NA = round(100 * mean(is.na(valor)), 2),
-      .groups = "drop"
-    ) %>%
-    arrange(desc(porcentaje_NA))
-  
-  print(tabla_municipios)
-  hist(tabla_municipios$porcentaje_NA)
-  
-  
-  # punto de muestreo
-  tabla_puntos <- diario_as %>%
-    group_by(punto_muestreo) %>%
-    summarise(
-      n = n(),
-      observados = sum(!is.na(valor)),
-      ausentes = sum(is.na(valor)),
-      porcentaje_NA = round(100 * mean(is.na(valor)), 2),
-      .groups = "drop"
-    ) %>%
-    arrange(desc(porcentaje_NA))
-  
-  print(tabla_puntos)
-  hist(tabla_puntos$porcentaje_NA)
-  
-# Ausencias según tipo de estación
-  round(100 * tapply(
-    is.na(diario_as$valor),
-    diario_as$tipo_estacion,
-    mean
-  ), 2)
-  
-# Ausencias según tipo de área
-  round(100 * tapply(
-    is.na(diario_as$valor),
-    diario_as$tipo_area,
-    mean
-  ), 2)
-# Porcentaje de ausencias según mes y año
-  par(mfrow = c(2, 2))
-  
-  for (anio in c("2022", "2023")) {
-    for (punto in c("50297026_17_M", "33004020_17_M")) {
-      
-      est <- subset(diario_as,
-                    punto_muestreo == punto &
-                      format(fecha, "%Y") == anio)
-      
-      est <- est[order(est$fecha), ]
-      
-      plot(est$fecha, est$valor,
-           type = "p", pch = 16, cex = .5,
-           col = "steelblue4",
-           xlim = as.Date(c(paste0(anio, "-01-01"),
-                            paste0(anio, "-12-31"))),
-           xlab = "Fecha",
-           ylab = "Arsénico (ng/m³)",
-           main = paste(punto, "-", anio))
-      
-      rug(est$fecha[is.na(est$valor)],
-          side = 1, col = "firebrick3", lwd = 2)
-    }
-  }
-  
-  par(mfrow = c(1, 1))
-# la serie temporal
-  por_dia <- diario_as %>%
-    group_by(fecha) %>%
-    summarise(
-      porcentaje_NA = 100 * mean(is.na(valor)),
-      n_registros = n(),
-      .groups = "drop"
-    )
-  
-  par(mfrow = c(2, 1))
-  
-  for (anio in c("2022", "2023")) {
-    
-    datos_anio <- subset(por_dia,
-                         format(fecha, "%Y") == anio)
-    
-    plot(datos_anio$fecha, datos_anio$porcentaje_NA,
-         type = "l",
-         col = "steelblue4",
-         ylim = c(0, 100),
-         xlim = as.Date(c(paste0(anio, "-01-01"),
-                          paste0(anio, "-12-31"))),
-         xlab = "Fecha",
-         ylab = "% de ausencias",
-         main = paste("Ausencias de arsénico -", anio))
-  }
-  
-  par(mfrow = c(1, 1))
 
-  
+diario_as$nombre_prov <- factor(
+  nombres_prov[as.integer(as.character(diario_as$provincia))]
+)
+
+naniar::gg_miss_fct(
+  diario_as[, c("nombre_prov", "valor")],
+  fct = nombre_prov
+) + ggplot2::coord_flip()
+
+# Ausencias según municipio
+tabla_municipios <- diario_as %>%
+  group_by(provincia, municipio) %>%
+  summarise(
+    n = n(),
+    observados = sum(!is.na(valor)),
+    ausentes = sum(is.na(valor)),
+    porcentaje_NA = round(100 * mean(is.na(valor)), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(porcentaje_NA))
+
+print(tabla_municipios)
+hist(tabla_municipios$porcentaje_NA, main = "Porcentaje de NAs por municipio")
+
+
+# Punto de muestreo
+tabla_puntos <- diario_as %>%
+  group_by(punto_muestreo) %>%
+  summarise(
+    n = n(),
+    observados = sum(!is.na(valor)),
+    ausentes = sum(is.na(valor)),
+    porcentaje_NA = round(100 * mean(is.na(valor)), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(porcentaje_NA))
+
+print(tabla_puntos)
+hist(tabla_puntos$porcentaje_NA)
+
+# Ausencias según tipo de estación
+round(100 * tapply(
+  is.na(diario_as$valor),
+  diario_as$tipo_estacion,
+  mean
+), 2)
+
+# Ausencias según tipo de área
+round(100 * tapply(
+  is.na(diario_as$valor),
+  diario_as$tipo_area,
+  mean
+), 2)
+
+# Registros posteriores a la fecha de baja
+posteriores_baja <- diario_as %>%
+  filter(
+    !is.na(fecha_fin),
+    fecha > fecha_fin
+  )
+
+# Resumen por punto de muestreo
+posteriores_baja %>%
+  group_by(
+    anio, punto_muestreo,
+    nombre_estacion, fecha_fin
+  ) %>%
+  summarise(
+    n_registros = n(),
+    ausentes = sum(is.na(valor)),
+    observados = sum(!is.na(valor)),
+    .groups = "drop"
+  )
+
+# Porcentaje de ausencias según mes y año
+par(mfrow = c(2, 2))
+
+for (anio in c("2022", "2023")) {
+  for (punto in c("50297026_17_M", "33004020_17_M")) {
+    est <- subset(
+      diario_as,
+      punto_muestreo == punto &
+        format(fecha, "%Y") == anio
+    )
+
+    est <- est[order(est$fecha), ]
+
+    plot(est$fecha, est$valor,
+      type = "p", pch = 16, cex = .5,
+      col = "steelblue4",
+      xlim = as.Date(c(
+        paste0(anio, "-01-01"),
+        paste0(anio, "-12-31")
+      )),
+      xlab = "Fecha",
+      ylab = "Arsénico (ng/m³)",
+      main = paste(punto, "-", anio)
+    )
+
+    rug(est$fecha[is.na(est$valor)],
+      side = 1, col = "firebrick3", lwd = 2
+    )
+  }
+}
+
+par(mfrow = c(1, 1))
+# la serie temporal
+por_dia <- diario_as %>%
+  group_by(fecha) %>%
+  summarise(
+    porcentaje_NA = 100 * mean(is.na(valor)),
+    n_registros = n(),
+    .groups = "drop"
+  )
+
+par(mfrow = c(2, 1))
+
+for (anio in c("2022", "2023")) {
+  datos_anio <- subset(
+    por_dia,
+    format(fecha, "%Y") == anio
+  )
+
+  plot(datos_anio$fecha, datos_anio$porcentaje_NA,
+    type = "l",
+    col = "steelblue4",
+    ylim = c(0, 100),
+    xlim = as.Date(c(
+      paste0(anio, "-01-01"),
+      paste0(anio, "-12-31")
+    )),
+    xlab = "Fecha",
+    ylab = "% de ausencias",
+    main = paste("Ausencias de arsénico -", anio)
+  )
+}
+
+par(mfrow = c(1, 1))
+
+
 #' ## Estructura de la ausencia
 #'
 #' Podemos también realizar un análisis de los puntos de muestreo, para
@@ -292,10 +322,10 @@ intervalos %>%
   count(dif, sort = TRUE) %>%
   head(10)
 
-#' 
+#'
 #' Test de Little para MCAR:
 
-naniar::mcar_test(diario_as[c("punto_muestreo","provincia","municipio","estacion","valor")])
+naniar::mcar_test(diario_as[c("punto_muestreo", "provincia", "municipio", "estacion", "valor")])
 
 naniar::mcar_test(diario_as)
 
