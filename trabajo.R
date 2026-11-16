@@ -290,16 +290,69 @@ round(100 * tapply(
 #' estas diferencias son significativas y tienen la posibilidad de el explicar el mecanismo
 #' de ausencia.
 
+#' ## Ausencias según la fecha de medición
+#'
+#' A continuación, estudiamos cómo varía la proporción de ausencias
+#' a lo largo de 2022 y 2023, tanto a nivel mensual como diario.
 
-# Porcentaje de ausencias según mes y año
+# Porcentaje de ausencias según año
+
+anio <- format(diario_as$fecha, "%Y")
+ausente <- is.na(diario_as$valor)
+
+tabla.anios <- data.frame(
+  n = as.vector(table(anio)),
+  observados = as.vector(tapply(!ausente, anio, sum)),
+  ausentes = as.vector(tapply(ausente, anio, sum)),
+  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
+  row.names = names(table(anio))
+)
+tabla.anios
+
+# Porcentaje de ausencias según mes
+
+mes <- format(diario_as$fecha, "%m")
+
+por_mes <- round(
+  100 * tapply(ausente, list(anio, mes), mean),
+  2
+)
+
+por_mes
+
+matplot(1:12, t(por_mes),
+        type = "b", pch = 16, lty = 1,
+        col = c("steelblue4", "firebrick3"),
+        xaxt = "n",
+        xlab = "Mes",
+        ylab = "% de ausencias",
+        main = "Ausencias mensuales de arsénico",
+        ylim = c(0,100))
+        
+
+axis(1, at = 1:12, labels = month.abb)
+legend("topright", legend = rownames(por_mes),
+       col = c("steelblue4", "firebrick3"),
+       lty = 1, pch = 16)
+#' Los porcentajes mensuales de ausencia son similares en ambos años,
+#' sin observarse un patrón estacional claramente repetido.
+#' Por tanto, el mes y el año no parecen explicar por sí solos
+#' las diferencias en la disponibilidad de las mediciones.
+#'
+#' Para observar con más detalle la distribución temporal de las ausencias,
+#' seleccionamos dos puntos de muestreo con porcentajes de ausencia
+#' diferentes y representamos sus mediciones durante ambos años.
+#' Los puntos azules representan las concentraciones observadas y
+#' las marcas rojas del eje horizontal indican las fechas sin medición.
+
 par(mfrow = c(2, 2))
 
-for (anio in c("2022", "2023")) {
+for (a in c("2022", "2023")) {
   for (punto in c("50297026_17_M", "33004020_17_M")) {
     est <- subset(
       diario_as,
       punto_muestreo == punto &
-        format(fecha, "%Y") == anio
+        format(fecha, "%Y") == a
     )
 
     est <- est[order(est$fecha), ]
@@ -308,12 +361,13 @@ for (anio in c("2022", "2023")) {
       type = "p", pch = 16, cex = .5,
       col = "steelblue4",
       xlim = as.Date(c(
-        paste0(anio, "-01-01"),
-        paste0(anio, "-12-31")
+        paste0(a, "-01-01"),
+        paste0(a, "-12-31")
       )),
       xlab = "Fecha",
       ylab = "Arsénico (ng/m³)",
-      main = paste(punto, "-", anio)
+      main = paste(substr(est$nombre_estacion[1], 1, 25), "-", a),
+      cex.main = 0.85
     )
 
     rug(est$fecha[is.na(est$valor)],
@@ -323,7 +377,18 @@ for (anio in c("2022", "2023")) {
 }
 
 par(mfrow = c(1, 1))
-# la serie temporal
+
+#' Se observan diferencias importantes entre los dos puntos de muestreo,
+#' mientras que cada uno mantiene un comportamiento relativamente similar
+#' entre 2022 y 2023. Esto sugiere que la disponibilidad de mediciones
+#' podría estar más relacionada con el punto de muestreo que con el año.
+#' No obstante, se trata únicamente de dos ejemplos y no podemos
+#' generalizar esta conclusión al conjunto de estaciones.
+
+#' Por último, analizamos la evolución diaria del porcentaje de
+#' ausencias considerando conjuntamente todos los puntos de muestreo.
+#' Para facilitar la comparación, representamos cada año por separado,
+#' manteniendo la misma escala vertical.
 por_dia <- diario_as %>%
   group_by(fecha) %>%
   summarise(
@@ -355,6 +420,13 @@ for (anio in c("2022", "2023")) {
 }
 
 par(mfrow = c(1, 1))
+
+#' En ambos años, el porcentaje diario de ausencias presenta
+#' fluctuaciones, generalmente alrededor del 70 % y el 80 %,
+#' sin observarse una tendencia temporal clara.
+#' Tampoco parecen existir grandes diferencias globales entre ambos años.
+#' Esto indica que la elevada proporción de ausencias se mantiene
+#' relativamente estable a lo largo del período estudiado.
 
 
 #' ## Estructura de la ausencia
