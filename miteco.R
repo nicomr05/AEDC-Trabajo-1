@@ -213,4 +213,3 @@ diario_as <- diario_as %>%
       factor
     )
   )
-
