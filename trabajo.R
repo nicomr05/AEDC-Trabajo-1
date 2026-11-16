@@ -4,7 +4,7 @@
 #' author: [S. E. Elizabet, M. R. Nicolás]
 #' date: \today
 #' fontsize: 10pt
-#' fig_width: \textwidth
+#' fig_width: 0.65\textwidth
 #' fig_height: 6
 #' fig_caption: true
 #' highlight: tango
@@ -27,6 +27,10 @@
 #'    message = FALSE,
 #'    warning = FALSE,
 #'    width = 120,
+#'    fig.width = 6,
+#'    fig.height = 4.5,
+#'    out.width = "75%",
+#'    fig.align = "center",
 #'    comment = NA,
 #'    tidy = TRUE,
 #'    tidy.opts = list(width.cutoff=75),
@@ -146,7 +150,7 @@ diario_as_final <- diario_as[1:13]
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
 #' concentración diaria de arsénico:
 
-summary(diario_as_final)
+summary(diario_as_final$valor)
 glimpse(diario_as_final)
 
 #' La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
@@ -184,17 +188,17 @@ datos_prov <- diario_as_final %>%
 naniar::gg_miss_fct(
   datos_prov[, c("nombre_prov", "valor")],
   fct = nombre_prov
-) + ggplot2::coord_flip()
+) +
+  ggplot2::theme(
+    axis.text.y = ggplot2::element_text(size = 6)
+  ) + ggplot2::coord_flip()
 
-#' A continuación, realizamos el mismo análisis a nivel municipal.
-#' Utilizamos conjuntamente los códigos de provincia y municipio, ya que
-#' el código de municipio por sí solo no es único en todo el territorio.
-#' Incorporamos sus nombres oficiales para facilitar la identificación.
-#'
-#' Calculamos el número de registros, los valores observados, los ausentes
-#' y el porcentaje de ausencia en cada municipio.
+#' A continuación estudiaremos las ausencias según municipio y punto de muestreo.
+#' Calculamos el porcentaje de valores ausentes para cada grupo y comparamos sus
+#' distribuciones mediante histogramas.
 
-tabla_municipios <- diario_as %>%
+# Ausencias por municipio
+tabla_municipios <- diario_as_final %>%
   group_by(provincia, municipio, nombre_prov, nombre_mun) %>%
   summarise(
     n = n(),
@@ -205,24 +209,7 @@ tabla_municipios <- diario_as %>%
   ) %>%
   arrange(desc(porcentaje_NA))
 
-#' Para resumir la distribución de las tasas de ausencia entre municipios,
-#' representamos un histograma de sus porcentajes.
-
-hist(tabla_municipios$porcentaje_NA,
-  main = "Distribución de ausencias por municipio",
-  xlab = "% de valores ausentes",
-  ylab = "Número de municipios",
-  xlim = c(0, 100)
-)
-
-#' Finalmente, estudiamos las ausencias según el punto de muestreo.
-#' Esta desagregación permite comparar las distintas series de medición
-#' de arsénico, que pueden presentar porcentajes y patrones de ausencia
-#' diferentes.
-#'
-#' Para cada punto calculamos el número de registros, observaciones
-#' disponibles, valores ausentes y porcentaje de ausencia.
-
+# Ausencias por punto de muestreo
 tabla_puntos <- diario_as_final %>%
   group_by(punto_muestreo) %>%
   summarise(
@@ -237,16 +224,27 @@ tabla_puntos <- diario_as_final %>%
   ) %>%
   arrange(desc(porcentaje_NA))
 
-#' Representamos la distribución de los porcentajes de ausencia entre
-#' puntos de muestreo para comprobar si predominan tasas similares
-#' o si existe una gran heterogeneidad entre las series.
+# Representación conjunta
+par(mfrow = c(1, 2))
+
+hist(tabla_municipios$porcentaje_NA,
+  main = "Municipios",
+  xlab = "% de ausencias",
+  ylab = "Número de municipios",
+  xlim = c(0, 100),
+  breaks = seq(0, 100, 10)
+)
 
 hist(tabla_puntos$porcentaje_NA,
-  main = "Distribución de ausencias por punto de muestreo",
-  xlab = "% de valores ausentes",
-  ylab = "Número de puntos de muestreo",
-  xlim = c(0, 100)
+  main = "Puntos de muestreo",
+  xlab = "% de ausencias",
+  ylab = "Número de puntos",
+  xlim = c(0, 100),
+  breaks = seq(0, 100, 10)
 )
+
+par(mfrow = c(1, 1))
+
 
 #' Además de la ubicación geográfica, disponemos de información sobre
 #' las características de las estaciones.
@@ -485,25 +483,20 @@ t(intervalos %>%
 #' ### Test de Little
 #' Aplicamos el test de Little para contrastar la hipótesis de
 #' ausencia completamente aleatoria (MCAR).
-#' Incorporamos un índice temporal (`fecha`) para investigar si la ausencia está
-#' relacionada con el tiempo.
+#' Realizaremos el test con un índice temporal (`fecha`) y con `valor` para investigar
+#' si la ausencia está relacionada con el tiempo.
 
 naniar::mcar_test(diario_as_final[c("fecha", "valor")])
 
 #' Con un nivel de significación del 0.05, el test de Little no nos permite rechazar
 #' la situación MCAR.
-#' Sin embargo, si introducimos información espacial podemos observar que el test
-#' rechaza claramente, por ejemplo por comunidad autónoma:
-
-naniar::mcar_test(diario_as_final[c("nombre_ccaa", "valor")])
-
-#' De manera similar, por zona:
-
-naniar::mcar_test(diario_as_final[c("zona", "valor")])
-
-#' Finalmente, como demostración general, si realizamos el test a todas las variables
 #'
-#' lógicamente también se rechaza MCAR:
+#' Sin embargo, si lo realizamos incluyendo información espacial, el test rechaza
+#' claramente, por ejemplo por comunidad autónoma o por zona obtenemos un $p$-valor
+#' de 0 de máquina.
+#'
+#' Finalmente, como demostración general, si realizamos el test a todas las variables
+#' se rechaza también MCAR:
 
 naniar::mcar_test(diario_as_final)
 
@@ -536,24 +529,26 @@ datos_log <- diario_as %>%
 #' mediante contrastes de razón de verosimilitudes, con un nivel
 #' de significación del 5 %.
 
-modelo <- glm(
-  ausente ~ mes + anio + tipo_estacion + tipo_area +
-    provincia + zona + dia_semana,
-  data = datos_log,
-  family = binomial()
-)
+#' ```{r, echo=TRUE}
+#' modelo <- glm(
+#'   ausente ~ mes + anio + tipo_estacion + tipo_area +
+#'     provincia + zona + dia_semana,
+#'   data = datos_log,
+#'   family = binomial()
+#' )
+#' ```
 
-drop1(modelo, test = "Chisq")
+d <- drop1(modelo, test = "Chisq")
 
-#' El año presenta el mayor valor p (0,781), por lo que lo
+#' El año presenta el mayor $p$-valor (0,781), por lo que lo
 #' eliminamos al no aportar información significativa al modelo
 #' una vez consideradas las demás variables.
 
 modelo2 <- update(modelo, . ~ . - anio)
 
-drop1(modelo2, test = "Chisq")
+d <- drop1(modelo2, test = "Chisq")
 
-#' Tras eliminar el año, `tipo_area` presenta el mayor valor p
+#' Tras eliminar el año, `tipo_area` presenta el mayor $p$-valor
 #' (0,062), superior al 5 %. Por tanto, también la eliminamos
 #' y volvemos a comprobar la significación de las variables.
 
@@ -574,11 +569,13 @@ drop1(modelo3, test = "Chisq")
 #' concreto aporta más información sobre las ausencias que las características
 #' que lo representan.
 
-modelo_puntos <- glm(
-  ausente ~ mes + punto_muestreo + dia_semana,
-  data = datos_log,
-  family = binomial()
-)
+#' ```{r, echo=TRUE}
+#' modelo_puntos <- glm(
+#'   ausente ~ mes + punto_muestreo + dia_semana,
+#'   data = datos_log,
+#'   family = binomial()
+#' )
+#' ```
 
 drop1(modelo_puntos, test = "Chisq")
 
@@ -603,7 +600,8 @@ AIC(modelo3, modelo_puntos)
 #' MNAR. Además, las observaciones repetidas por estación pueden
 #' presentar dependencia temporal, por lo que los valores p deben
 #' interpretarse con cautela.
-
+#'
+#'
 #' # Conclusiones
 #'
 #' En este trabajo hemos analizado las ausencias en las mediciones
@@ -673,16 +671,18 @@ AIC(modelo3, modelo_puntos)
 #'
 #' # Referencias
 #'
-#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
-#'   [Fichero intercambio CSV: Formato y estructura](https://miteco.gob.es/content/dam/miteco/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/formatodatoscsvmiteco_web_tcm30-501420.pdf).
+#' - MITECO. [Datos oficiales de calidad del aire, 2022](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2022.html)
+#'   y [2023](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2023.html).
 #'
-#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
-#'   [Estadística de Calidad del Aire: Informe metodológico estandarizado](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/ims_7104_ca_v1_tcm30-502328.pdf).
+#' - MITECO. [*Fichero intercambio CSV: formato y estructura*](https://www.miteco.gob.es/content/dam/miteco/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/formatodatoscsvmiteco_web_tcm30-501420.pdf).
 #'
-#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
-#'   [Datos oficiales de calidad del aire de 2022](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2022.html).
+#' - MITECO. [*Estadística de calidad del aire: informe metodológico estandarizado*](https://www.miteco.gob.es/content/dam/miteco/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/ims_7104_ca_v1_tcm30-502328.pdf), apartados 11 y 18.
 #'
-#' - Ministerio para la Transición Ecológica y el Reto Demográfico.
-#'   [Datos oficiales de calidad del aire de 2023](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos/datos-oficiales-2023.html).
+#' - Little, R. J. A. (1988). [A Test of Missing Completely at Random for Multivariate Data with Missing Values](https://doi.org/10.1080/01621459.1988.10478722). *JASA*, 83(404), 1198–1202.
 #'
-
+#' - Tierney, N. y Cook, D. (2023). [Expanding Tidy Data Principles to Facilitate Missing Data Exploration](https://doi.org/10.18637/jss.v105.i07). *Journal of Statistical Software*, 105(7), 1–31. Paquete `naniar`.
+#'
+#' - van Buuren, S. y Groothuis-Oudshoorn, K. (2011). [mice: Multivariate Imputation by Chained Equations in R](https://doi.org/10.18637/jss.v045.i03). *Journal of Statistical Software*, 45(3), 1–67. Paquete `mice`.
+#'
+#' - R Core Team. *R: A Language and Environment for Statistical Computing*. R Foundation for Statistical Computing (`stats::glm`, `drop1`, `AIC`).
+#'
