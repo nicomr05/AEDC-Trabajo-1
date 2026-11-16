@@ -434,9 +434,8 @@ par(mfrow = c(1, 1))
 
 #' ## Estructura de la ausencia
 #'
-#' Podemos también realizar un análisis de los puntos de muestreo, para
-#' comprobar si existe alguno que no contenga mediciones nunca, para poder
-#' descartarlo.
+#' Comprobamos si existen puntos de muestreo sin ninguna medición
+#' disponible durante el período estudiado.
 
 por_punto <- diario_as %>%
   group_by(punto_muestreo) %>%
@@ -468,17 +467,58 @@ intervalos %>%
   count(dif, sort = TRUE) %>%
   head(10)
 
+#' Los intervalos más frecuentes entre mediciones consecutivas son
+#' de 1, 2 y 6 días. Esto sugiere que podrían existir diferentes
+#' periodicidades de muestreo según el punto de medición.
+#' Por tanto, parte de las ausencias podría corresponder a días
+#' en los que no estaba programada una medición.
+#' 
+#' ## Análisis del mecanismo de ausencia
 #'
-#' Test de Little para MCAR:
+#' ### Test de Little 
+#' Aplicamos el test de Little para contrastar la hipótesis de
+#' ausencia completamente aleatoria (MCAR).
+#' Incorporamos un índice temporal, calculado a partir de la fecha,
+#' para investigar si la ausencia está relacionada con el tiempo.
 
-naniar::mcar_test(diario_as[c("punto_muestreo", "provincia", "municipio", "estacion", "valor")])
+datos_little <- data.frame(
+  valor = diario_as$valor,
+  indice_fecha = as.integer(diario_as$fecha -
+                              min(diario_as$fecha)) + 1
+)
 
-naniar::mcar_test(diario_as)
+naniar::mcar_test(datos_little)
+#' ### Regresión logística
+#'
+#' Ajustamos un modelo de regresión logística para investigar si
+#' la ausencia de arsénico se relaciona con el mes, el año y
+#' las características observadas de las estaciones.
 
-#' Según el test de Little, existe evidencia suficiente para rechazar
-#' la hipótesis de que la ausencia provenga de un mecanismo MCAR tanto con todas
-#' las variables como cuando no se tiene en cuenta la dependencia temporal (no
-#' metemos la variable fecha en el test).
+datos_log <- diario_as %>%
+  mutate(
+    ausente = is.na(valor),
+    mes = factor(format(fecha, "%m")),
+    anio = factor(format(fecha, "%Y"))
+  )
+
+modelo <- glm(
+  ausente ~ mes + anio + tipo_estacion + tipo_area + provincia + zona,
+  data = datos_log,
+  family = binomial()
+)
+
+summary(modelo)
+
+drop1(modelo, test = "Chisq")
+
+modelo_puntos <- glm(
+  ausente ~ mes + anio + punto_muestreo,
+  data = datos_log,
+  family = binomial()
+)
+
+anova(modelo, modelo_puntos, test = "Chisq")
+
 
 #'
 #'
