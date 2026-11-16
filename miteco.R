@@ -195,13 +195,13 @@ diario_as <- diario_as %>%
 stopifnot(nrow(diario_as) == n_original)
 
 # Número de registros
-nrow(diario_as)
+#nrow(diario_as)
 
 # Comprobar cuántas observaciones tienen metadatos
-table(diario_as$anio, is.na(diario_as$nombre_estacion))
+#table(diario_as$anio, is.na(diario_as$nombre_estacion))
 
 # Ver las estaciones con su información
-print(diario_as)
+#print(diario_as)
 
 stopifnot(nrow(diario_as) == n_original)
 

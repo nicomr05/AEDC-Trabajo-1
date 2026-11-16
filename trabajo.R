@@ -7,7 +7,6 @@
 #' fig_width: \textwidth
 #' fig_height: 6
 #' fig_caption: true
-#' df_print: tibble  # print.data.frame(default)/kable/tibble
 #' highlight: tango
 #' header-includes:
 #' - \usepackage{fvextra}
@@ -19,13 +18,18 @@
 #'     number_sections: yes
 #'     toc: yes
 #'     toc_depth: 2
+#'     df_print: tibble  # print.data.frame(default)/kable/tibble
 #' ---
 #'
 #' ```{r setup, include=FALSE}
 #' knitr::opts_chunk$set(
 #'    echo=FALSE,
-#'    tidy=TRUE,
-#'    tidy.opts=list(width.cutoff=75),
+#'    message = FALSE,
+#'    warning = FALSE,
+#'    width = 120,
+#'    comment = NA,
+#'    tidy = TRUE,
+#'    tidy.opts = list(width.cutoff=75),
 #'    knit=FALSE
 #' )
 #' knitr::spin(
@@ -105,10 +109,9 @@ source("miteco.R")
 #' Para el análisis creamos `diario_as_final`, excluyendo las fechas
 #' administrativas.
 
-colMeans(is.na(diario_as))
+colMeans(is.na(diario_as))[c("valor","fecha_fin")]
 # Excluimos las fechas administrativas para el análisis de patrones
 diario_as_final <- diario_as[1:13]
-colMeans(is.na(diario_as_final))
 
 #' Además, convertimos las variables `provincia`, `municipio`, `estacion`,
 #' `punto_muestreo` `tipo_estacion`, `tipo_area` y `zona` a `factor`.
@@ -136,13 +139,15 @@ colMeans(is.na(diario_as_final))
 #' | `fecha_inicio` | Fecha de alta de la estación. |
 #' | `fecha_fin` | Fecha de baja de la estación, cuando consta. |
 #'
-#' ## Distribución de los valores y nulos
+#'
+#'
+#' # Distribución de los valores y nulos
 #'
 #' Comenzaremos mostrando las estadísticas generales del valor medio de la
 #' concentración diaria de arsénico:
 
-summary(diario_as)
-str(diario_as)
+summary(diario_as_final)
+glimpse(diario_as_final)
 
 #' La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
 #' y 33, con media 0.5571 y mediana 0.33.
@@ -156,15 +161,15 @@ hist(diario_as_final$valor,
   xlab = "Concentración de arsénico", ylab = "Frecuencia", freq = TRUE
 )
 
-mice::md.pattern(diario_as_final)
+#'
+patrones <- mice::md.pattern(diario_as_final, rotate.names = TRUE)
 
 #' Como era de esperar, la función `mice::md.pattern()` muestra un patrón de ausencia univariante,
 #' ya que `valor` es la única variable que presenta datos faltantes del conjunto seleccionado.
 #' Las variables restantes están completamente observadas y contienen información
 #' temporal y geográfica que podremos utilizar para investigar posibles asociaciones con la ausencia de concentración de arsénico.
-
-
-
+#'
+#'
 #' ## Ausencias según las características geográficas de las estaciones
 #'
 #' En primer lugar, estudiamos la distribución geográfica de las ausencias,
@@ -293,6 +298,7 @@ round(100 * tapply(
 #' estas diferencias son significativas y tienen la posibilidad de el explicar el mecanismo
 #' de ausencia.
 
+#'
 #' ## Ausencias según la fecha de medición
 #'
 #' A continuación, estudiamos cómo varía la proporción de ausencias
@@ -337,6 +343,7 @@ axis(1, at = 1:12, labels = month.abb)
 legend("topright", legend = rownames(por_mes),
        col = c("steelblue4", "firebrick3"),
        lty = 1, pch = 16)
+
 #' Los porcentajes mensuales de ausencia son similares en ambos años,
 #' sin observarse un patrón estacional claramente repetido.
 #' Por tanto, el mes y el año no parecen explicar por sí solos
@@ -432,6 +439,7 @@ par(mfrow = c(1, 1))
 #' relativamente estable a lo largo del período estudiado.
 
 
+#'
 #' ## Estructura de la ausencia
 #'
 #' Comprobamos si existen puntos de muestreo sin ninguna medición
@@ -488,6 +496,8 @@ datos_little <- data.frame(
 )
 
 naniar::mcar_test(datos_little)
+
+#'
 #' ### Regresión logística
 #'
 #' Ajustamos un modelo de regresión logística para investigar si
@@ -519,21 +529,3 @@ modelo_puntos <- glm(
 
 anova(modelo, modelo_puntos, test = "Chisq")
 
-
-#'
-#'
-#' # Métodos
-#'
-#'
-#'
-#' # Resultados
-#'
-#'
-#'
-#' # Discusión
-#'
-#'
-#'
-#' # Reproducibilidad
-#'
-#'

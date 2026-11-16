@@ -7,7 +7,6 @@ fontsize: 11pt
 fig_width: \textwidth
 fig_height: 6
 fig_caption: true
-df_print: tibble  # print.data.frame(default)/kable/tibble
 highlight: tango
 header-includes:
 - \usepackage{fvextra}
@@ -19,13 +18,18 @@ output:
     number_sections: yes
     toc: yes
     toc_depth: 2
+    df_print: tibble  # print.data.frame(default)/kable/tibble
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
    echo=FALSE,
-   tidy=TRUE,
-   tidy.opts=list(width.cutoff=75),
+   message = FALSE,
+   warning = FALSE,
+   width = 120,
+   comment = NA,
+   tidy = TRUE,
+   tidy.opts = list(width.cutoff=75),
    knit=FALSE
 )
 knitr::spin(
@@ -38,6 +42,7 @@ knitr::spin(
 ````{r}
 library(mice, warn.conflicts = FALSE)
 library(naniar, warn.conflicts = FALSE)
+library(tibble, warn.conflicts = FALSE)
 
 source("miteco.R")
 ````
@@ -64,6 +69,10 @@ Estos datos son públicos y se pueden obtener en la sección
 [**Datos de Calidad del Aire**](https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/evaluacion-y-datos-de-calidad-del-aire/datos.html)
 en la página web del MITECO.
 
+El proceso de descarga, importación y preparación de los datos se encuentra
+documentado en el archivo `miteco.R`, que genera el conjunto `diario_as`
+utilizado en este análisis.
+
 Al cargar los datos por primera vez pudimos observar que los datos contenían
 38 variables de tipo `chr` para identificar cada una de las mediciones, de las
 cuales las 31 variables llamadas `DXX` corresponden a cada uno de los días del
@@ -74,20 +83,42 @@ en años bisiestos.
 Es decir, que todas las ausencias son reales, pero estas últimas que tratamos
 son sistemáticas, por la forma de guardar los datos. El resto de ausencias son
 intrínsecas a los datos.
-
 Dado que la falta de estos valores se da únicamente por la forma de guardar los
 datos, decidimos convertir las 31 variables en una columna `valor` (de tipo
 `numeric`) y crear a su vez una columna `fecha` (de tipo `Date`) a partir de
 los valores de `ANNO`, `MES` y `DXX`, de manera que se eliminan los días
 que no existen.
-Podemos observar que `valor` es la única variable con nulos mediante `colMeans()`:
+
+Además, hemos incorporado la metainformación oficial de las estaciones proporcionada
+por el MITECO para cada año, relacionándola con las mediciones mediante el código
+de estación.
+De esta forma, disponemos de los nombres de las estaciones, comunidades
+autónomas, provincias y municipios, así como su tipo de estación,
+tipo de área y zona.
+También hemos conservado las fechas de alta y baja de las estaciones para comprobar
+más adelante si algunas ausencias pueden estar relacionadas con sus períodos de actividad.
+De hecho, 17 de las filas de la tabla contenían filas con `valor` a nulo, en
+las que se cumplía que `fecha` > `fecha_fin`, por lo que las eliminamos también.
+
+Haciendo `colMeans()` podemos identificar que, las ausencias no aparecen únicamente en
+`valor`, sino también en `fecha_fin`, que indica la fecha de baja
+de las estaciones cuando consta.
+Como las ausencias en `fecha_fin` se deben principalmente a estaciones
+que aún no han sido dadas de baja, conocemos su causa y no las
+incluiremos en el análisis de patrones de ausencia.
+Sin embargo, conservamos estas fechas en `diario_as`, ya que pueden
+ayudar a explicar algunas ausencias de mediciones.
+Para el análisis creamos `diario_as_final`, excluyendo las fechas
+administrativas.
 
 ````{r}
-colMeans(is.na(diario_as))
+colMeans(is.na(diario_as))[c("valor","fecha_fin")]
+# Excluimos las fechas administrativas para el análisis de patrones
+diario_as_final <- diario_as[1:13]
 ````
 
 Además, convertimos las variables `provincia`, `municipio`, `estacion`,
-`punto_muestreo` a `factor`.
+`punto_muestreo` `tipo_estacion`, `tipo_area` y `zona` a `factor`.
 
 
 ## Diccionario de variables
@@ -102,15 +133,26 @@ A continuación se muestra una tabla de guía para las variables del *tibble*
 | `punto_muestreo` | Identificador del equipo concreto. Suele tener la forma `códigoEstación_magnitud_técnica`: provincia + municipio + estación, el contaminante y un código del método de análisis. Una estación puede tener varios puntos. |
 | `fecha` | Fecha en la que se realizó la observación. |
 | `valor` | Concentración media diaria del arsénico. Se mide en $ng / m^3$. |
+| `nombre_estacion` | Nombre oficial de la estación de medición. |
+| `nombre_ccaa` | Comunidad autónoma donde se encuentra la estación. |
+| `nombre_prov` | Nombre de la provincia. |
+| `nombre_mun` | Nombre del municipio. |
+| `tipo_estacion` | Tipo de estación según la fuente predominante: tráfico, industrial o fondo. |
+| `tipo_area` | Clasificación del entorno: urbano, suburbano o rural. |
+| `zona` | Caracterización del entorno de la estación. |
+| `fecha_inicio` | Fecha de alta de la estación. |
+| `fecha_fin` | Fecha de baja de la estación, cuando consta. |
 
 
-## Distribución de los valores y nulos
+
+# Distribución de los valores y nulos
 
 Comenzaremos mostrando las estadísticas generales del valor medio de la
 concentración diaria de arsénico:
 
 ````{r}
-summary(diario_as)
+summary(diario_as_final)
+glimpse(diario_as_final)
 ````
 
 La variable de estudio `valor` tiene, por tanto, un rango de valores entre 0
@@ -118,21 +160,175 @@ y 33, con media 0.5571 y mediana 0.33.
 Además, cuenta con 61233 nulos.
 
 Si mostramos la distribución de los valores de la misma, observamos que
-efectivamente, la mayoría de valores se aproximan al 0.
+efectivamente, la mayoría de valores se encuentran entorno al 0.
 
 ````{r}
-hist(diario_as$valor,
+hist(diario_as_final$valor,
   breaks = "FD", col = "black", main = "Arsénico observado",
   xlab = "Concentración de arsénico", ylab = "Frecuencia", freq = TRUE
 )
 ````
 
-La función `mice::md.pattern()` no aporta mucha información útil, ya que solo
-contamos con una variable, así que no nos molestaremos en incluirla.
-Igualmente, dentro de esta variable podemos ver el conteo de nulos, por ejemplo
-por año:
+
 
 ````{r}
+patrones <- mice::md.pattern(diario_as_final, rotate.names = TRUE)
+````
+
+Como era de esperar, la función `mice::md.pattern()` muestra un patrón de ausencia univariante,
+ya que `valor` es la única variable que presenta datos faltantes del conjunto seleccionado.
+Las variables restantes están completamente observadas y contienen información
+temporal y geográfica que podremos utilizar para investigar posibles asociaciones con la ausencia de concentración de arsénico.
+
+
+## Ausencias según las características geográficas de las estaciones
+
+En primer lugar, estudiamos la distribución geográfica de las ausencias,
+comenzando por las provincias. Para facilitar su interpretación,
+utilizamos los nombres oficiales incorporados mediante la metainformación.
+Representamos el porcentaje de valores ausentes de arsénico en cada
+provincia mediante `naniar::gg_miss_fct()`.
+
+````{r}
+datos_prov <- diario_as_final %>%
+  mutate(nombre_prov = factor(nombre_prov))
+
+naniar::gg_miss_fct(
+  datos_prov[, c("nombre_prov", "valor")],
+  fct = nombre_prov
+) + ggplot2::coord_flip()
+````
+
+A continuación, realizamos el mismo análisis a nivel municipal.
+Utilizamos conjuntamente los códigos de provincia y municipio, ya que
+el código de municipio por sí solo no es único en todo el territorio.
+Incorporamos sus nombres oficiales para facilitar la identificación.
+
+Calculamos el número de registros, los valores observados, los ausentes
+y el porcentaje de ausencia en cada municipio.
+
+````{r}
+tabla_municipios <- diario_as %>%
+  group_by(provincia, municipio, nombre_prov, nombre_mun) %>%
+  summarise(
+    n = n(),
+    observados = sum(!is.na(valor)),
+    ausentes = sum(is.na(valor)),
+    porcentaje_NA = round(100 * mean(is.na(valor)), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(porcentaje_NA))
+
+print(tabla_municipios)
+````
+
+Para resumir la distribución de las tasas de ausencia entre municipios,
+representamos un histograma de sus porcentajes.
+
+````{r}
+hist(tabla_municipios$porcentaje_NA,
+  main = "Distribución de ausencias por municipio",
+  xlab = "% de valores ausentes",
+  ylab = "Número de municipios",
+  xlim = c(0, 100)
+)
+````
+
+Finalmente, estudiamos las ausencias según el punto de muestreo.
+Esta desagregación permite comparar las distintas series de medición
+de arsénico, que pueden presentar porcentajes y patrones de ausencia
+diferentes.
+
+Para cada punto calculamos el número de registros, observaciones
+disponibles, valores ausentes y porcentaje de ausencia.
+
+````{r}
+tabla_puntos <- diario_as_final %>%
+  group_by(punto_muestreo) %>%
+  summarise(
+    nombre_estacion = first(nombre_estacion),
+    nombre_prov = first(nombre_prov),
+    nombre_mun = first(nombre_mun),
+    n = n(),
+    observados = sum(!is.na(valor)),
+    ausentes = sum(is.na(valor)),
+    porcentaje_NA = round(100 * mean(is.na(valor)), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(porcentaje_NA))
+
+print(tabla_puntos, n = 15)
+````
+
+Representamos la distribución de los porcentajes de ausencia entre
+puntos de muestreo para comprobar si predominan tasas similares
+o si existe una gran heterogeneidad entre las series.
+
+````{r}
+hist(tabla_puntos$porcentaje_NA,
+  main = "Distribución de ausencias por punto de muestreo",
+  xlab = "% de valores ausentes",
+  ylab = "Número de puntos de muestreo",
+  xlim = c(0, 100)
+)
+````
+
+Además de la ubicación geográfica, disponemos de información sobre
+las características de las estaciones.
+Estudiamos si la proporción de ausencias presenta diferencias según
+el tipo de estación (fondo, industrial o tráfico) y según el tipo
+de área donde se encuentra (rural, suburbana o urbana).
+
+Primero mostramos el número de registros de cada categoría y
+después calculamos sus correspondientes porcentajes de ausencia.
+
+````{r}
+# Ausencias según tipo de estación
+table(diario_as_final$tipo_estacion)
+
+round(100 * tapply(
+  is.na(diario_as_final$valor),
+  diario_as_final$tipo_estacion,
+  mean
+), 2)
+
+# Ausencias según tipo de área
+table(diario_as_final$tipo_area)
+
+round(100 * tapply(
+  is.na(diario_as_final$valor),
+  diario_as_final$tipo_area,
+  mean
+), 2)
+````
+
+Los resultados muestran diferencias en los porcentajes de ausencia
+según la localización y las características de las estaciones.
+Destacan provincias como Murcia y Zaragoza, con porcentajes de
+ausencia inferiores a los de otras provincias.
+
+Las distribuciones por municipio y por punto de muestreo son muy
+similares, con una concentración de porcentajes de ausencia entre
+el 80 % y el 90 %.
+
+También observamos diferencias según el tipo de estación: las de
+fondo presentan un 75 % de ausencias, frente al 66,8 % de las de
+tráfico. Por tipo de área, las estaciones rurales presentan el
+mayor porcentaje de ausencia (78,04 %).
+
+Por tanto, la ausencia de mediciones parece estar asociada con
+características geográficas de las estaciones. Más adelante estudiaremos si
+estas diferencias son significativas y tienen la posibilidad de el explicar el mecanismo
+de ausencia.
+
+## Ausencias según la fecha de medición
+
+A continuación, estudiamos cómo varía la proporción de ausencias
+a lo largo de 2022 y 2023, tanto a nivel mensual como diario.
+
+````{r}
+# Porcentaje de ausencias según año
+
 anio <- format(diario_as$fecha, "%Y")
 ausente <- is.na(diario_as$valor)
 
@@ -144,27 +340,136 @@ tabla.anios <- data.frame(
   row.names = names(table(anio))
 )
 tabla.anios
+
+# Porcentaje de ausencias según mes
+
+mes <- format(diario_as$fecha, "%m")
+
+por_mes <- round(
+  100 * tapply(ausente, list(anio, mes), mean),
+  2
+)
+
+por_mes
+
+matplot(1:12, t(por_mes),
+        type = "b", pch = 16, lty = 1,
+        col = c("steelblue4", "firebrick3"),
+        xaxt = "n",
+        xlab = "Mes",
+        ylab = "% de ausencias",
+        main = "Ausencias mensuales de arsénico",
+        ylim = c(0,100))
+        
+
+axis(1, at = 1:12, labels = month.abb)
+legend("topright", legend = rownames(por_mes),
+       col = c("steelblue4", "firebrick3"),
+       lty = 1, pch = 16)
 ````
 
-Podemos visualizar también la distribución temporal de nulos.
+Los porcentajes mensuales de ausencia son similares en ambos años,
+sin observarse un patrón estacional claramente repetido.
+Por tanto, el mes y el año no parecen explicar por sí solos
+las diferencias en la disponibilidad de las mediciones.
+
+Para observar con más detalle la distribución temporal de las ausencias,
+seleccionamos dos puntos de muestreo con porcentajes de ausencia
+diferentes y representamos sus mediciones durante ambos años.
+Los puntos azules representan las concentraciones observadas y
+las marcas rojas del eje horizontal indican las fechas sin medición.
 
 ````{r}
-var <- "Provincia"
-VIM::marginplot(diario_as[, c(stringr::str_to_lower(var), "valor")],
-  xlab = var,
-  ylab = "As (ng/m³)", pch = 16, cex.numbers = .9
-)
+par(mfrow = c(2, 2))
+
+for (a in c("2022", "2023")) {
+  for (punto in c("50297026_17_M", "33004020_17_M")) {
+    est <- subset(
+      diario_as,
+      punto_muestreo == punto &
+        format(fecha, "%Y") == a
+    )
+
+    est <- est[order(est$fecha), ]
+
+    plot(est$fecha, est$valor,
+      type = "p", pch = 16, cex = .5,
+      col = "steelblue4",
+      xlim = as.Date(c(
+        paste0(a, "-01-01"),
+        paste0(a, "-12-31")
+      )),
+      xlab = "Fecha",
+      ylab = "Arsénico (ng/m³)",
+      main = paste(substr(est$nombre_estacion[1], 1, 25), "-", a),
+      cex.main = 0.85
+    )
+
+    rug(est$fecha[is.na(est$valor)],
+      side = 1, col = "firebrick3", lwd = 2
+    )
+  }
+}
+
+par(mfrow = c(1, 1))
 ````
 
-De esta última gráfica podemos sacar que los nulos se encuentran a lo largo
-de todo el rango de valores.
+Se observan diferencias importantes entre los dos puntos de muestreo,
+mientras que cada uno mantiene un comportamiento relativamente similar
+entre 2022 y 2023. Esto sugiere que la disponibilidad de mediciones
+podría estar más relacionada con el punto de muestreo que con el año.
+No obstante, se trata únicamente de dos ejemplos y no podemos
+generalizar esta conclusión al conjunto de estaciones.
+Por último, analizamos la evolución diaria del porcentaje de
+ausencias considerando conjuntamente todos los puntos de muestreo.
+Para facilitar la comparación, representamos cada año por separado,
+manteniendo la misma escala vertical.
 
+````{r}
+por_dia <- diario_as %>%
+  group_by(fecha) %>%
+  summarise(
+    porcentaje_NA = 100 * mean(is.na(valor)),
+    n_registros = n(),
+    .groups = "drop"
+  )
+
+par(mfrow = c(2, 1))
+
+for (anio in c("2022", "2023")) {
+  datos_anio <- subset(
+    por_dia,
+    format(fecha, "%Y") == anio
+  )
+
+  plot(datos_anio$fecha, datos_anio$porcentaje_NA,
+    type = "l",
+    col = "steelblue4",
+    ylim = c(0, 100),
+    xlim = as.Date(c(
+      paste0(anio, "-01-01"),
+      paste0(anio, "-12-31")
+    )),
+    xlab = "Fecha",
+    ylab = "% de ausencias",
+    main = paste("Ausencias de arsénico -", anio)
+  )
+}
+
+par(mfrow = c(1, 1))
+````
+
+En ambos años, el porcentaje diario de ausencias presenta
+fluctuaciones, generalmente alrededor del 70 % y el 80 %,
+sin observarse una tendencia temporal clara.
+Tampoco parecen existir grandes diferencias globales entre ambos años.
+Esto indica que la elevada proporción de ausencias se mantiene
+relativamente estable a lo largo del período estudiado.
 
 ## Estructura de la ausencia
 
-Podemos también realizar un análisis de los puntos de muestreo, para
-comprobar si existe alguno que no contenga mediciones nunca, para poder
-descartarlo.
+Comprobamos si existen puntos de muestreo sin ninguna medición
+disponible durante el período estudiado.
 
 ````{r}
 por_punto <- diario_as %>%
@@ -200,33 +505,61 @@ intervalos %>%
   head(10)
 ````
 
+Los intervalos más frecuentes entre mediciones consecutivas son
+de 1, 2 y 6 días. Esto sugiere que podrían existir diferentes
+periodicidades de muestreo según el punto de medición.
+Por tanto, parte de las ausencias podría corresponder a días
+en los que no estaba programada una medición.
 
-Test de Little para MCAR:
+## Análisis del mecanismo de ausencia
+
+### Test de Little 
+Aplicamos el test de Little para contrastar la hipótesis de
+ausencia completamente aleatoria (MCAR).
+Incorporamos un índice temporal, calculado a partir de la fecha,
+para investigar si la ausencia está relacionada con el tiempo.
 
 ````{r}
-naniar::mcar_test(diario_as[c("punto_muestreo","provincia","municipio","estacion","valor")])
+datos_little <- data.frame(
+  valor = diario_as$valor,
+  indice_fecha = as.integer(diario_as$fecha -
+                              min(diario_as$fecha)) + 1
+)
 
-naniar::mcar_test(diario_as)
+naniar::mcar_test(datos_little)
 ````
 
-Según el test de Little, existe evidencia suficiente para rechazar
-la hipótesis de que la ausencia provenga de un mecanismo MCAR tanto con todas
-las variables como cuando no se tiene en cuenta la dependencia temporal (no
-metemos la variable fecha en el test).
 
+### Regresión logística
 
-# Métodos
+Ajustamos un modelo de regresión logística para investigar si
+la ausencia de arsénico se relaciona con el mes, el año y
+las características observadas de las estaciones.
 
+````{r}
+datos_log <- diario_as %>%
+  mutate(
+    ausente = is.na(valor),
+    mes = factor(format(fecha, "%m")),
+    anio = factor(format(fecha, "%Y"))
+  )
 
+modelo <- glm(
+  ausente ~ mes + anio + tipo_estacion + tipo_area + provincia + zona,
+  data = datos_log,
+  family = binomial()
+)
 
-# Resultados
+summary(modelo)
 
+drop1(modelo, test = "Chisq")
 
+modelo_puntos <- glm(
+  ausente ~ mes + anio + punto_muestreo,
+  data = datos_log,
+  family = binomial()
+)
 
-# Discusión
-
-
-
-# Reproducibilidad
-
+anova(modelo, modelo_puntos, test = "Chisq")
+````
 
