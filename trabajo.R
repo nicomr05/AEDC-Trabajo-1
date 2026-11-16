@@ -159,22 +159,10 @@ mice::md.pattern(diario_as_final)
 #' ya que `valor` es la única variable que presenta datos faltantes del conjunto seleccionado.
 #' Las variables restantes están completamente observadas y contienen información
 #' temporal y geográfica que podremos utilizar para investigar posibles asociaciones con la ausencia de concentración de arsénico.
-#' A continuación, estudiamos el número y porcentaje de ausencias
-#' correspondientes a cada año.
 
-anio <- format(diario_as$fecha, "%Y")
-ausente <- is.na(diario_as$valor)
 
-tabla.anios <- data.frame(
-  n = as.vector(table(anio)),
-  observados = as.vector(tapply(!ausente, anio, sum)),
-  ausentes = as.vector(tapply(ausente, anio, sum)),
-  porcentaje_NA = round(100 * as.vector(tapply(ausente, anio, mean)), 2),
-  row.names = names(table(anio))
-)
-tabla.anios
 
-#' ## Ausencias según las características de las estaciones
+#' ## Ausencias según las características geográficas de las estaciones
 #'
 #' En primer lugar, estudiamos la distribución geográfica de las ausencias,
 #' comenzando por las provincias. Para facilitar su interpretación,
