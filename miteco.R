@@ -103,3 +103,101 @@ diario_as <- raw_chr %>%
     valor = parse_double(str_trim(valor), locale = locale(decimal_mark = ".")),
     across(c(provincia, municipio, estacion, punto_muestreo), factor)
   )
+
+# 4. Incorporar metadatos de las estaciones
+library(readxl)
+
+archivos_meta <- c(
+  "2022" = "datos/miteco_meta/Metainformacion2022.xlsx",
+  "2023" = "datos/miteco_meta/Metainformacion2023_19022025.xlsx"
+)
+
+# Convertir fechas del Excel a Date
+convertir_fecha <- function(x) {
+  x <- trimws(as.character(x))
+  x[x == ""] <- NA_character_
+  
+  fecha <- as.Date(x, format = "%d/%m/%Y")
+  
+  i <- is.na(fecha) & !is.na(x)
+  fecha[i] <- as.Date(substr(x[i], 1, 10),
+                      format = "%Y-%m-%d")
+  
+  i <- is.na(fecha) & grepl("^[0-9]{4,5}$", x)
+  fecha[i] <- as.Date(as.numeric(x[i]),
+                      origin = "1899-12-30")
+  
+  fecha
+}
+
+# Leer la hoja de estaciones correspondiente a cada año
+leer_estaciones <- function(anio) {
+  
+  meta <- read_excel(
+    archivos_meta[as.character(anio)],
+    sheet = paste0("Estaciones", anio),
+    col_types = "text"
+  )
+  
+  names(meta) <- toupper(trimws(names(meta)))
+  
+  meta %>%
+    filter(!is.na(COD_LOCAL)) %>%
+    transmute(
+      anio = as.integer(anio),
+      cod_local = sprintf("%08d", as.integer(COD_LOCAL)),
+      nombre_estacion = NOMBRE,
+      nombre_ccaa = N_CCAA,
+      nombre_prov = N_PROVINCIA,
+      nombre_mun = N_MUNICIPIO,
+      tipo_estacion = TIPO_ESTACION,
+      tipo_area = TIPO_AREA,
+      zona = ZONA,
+      fecha_inicio = convertir_fecha(FECHA_INI),
+      fecha_fin = convertir_fecha(FECHA_FIN)
+    )
+}
+
+# Juntar metadatos de 2022 y 2023
+meta_estaciones <- bind_rows(
+  leer_estaciones(2022),
+  leer_estaciones(2023)
+)
+
+# Comprobar que cada estación tiene un solo registro por año
+stopifnot(
+  !anyDuplicated(meta_estaciones[c("anio", "cod_local")])
+)
+
+# Crear las claves en los datos diarios
+diario_as <- diario_as %>%
+  mutate(
+    anio = as.integer(format(fecha, "%Y")),
+    cod_local = sprintf(
+      "%02d%03d%03d",
+      as.integer(as.character(provincia)),
+      as.integer(as.character(municipio)),
+      as.integer(as.character(estacion))
+    )
+  )
+
+# Relacionar cada observación con sus metadatos del mismo año
+n_original <- nrow(diario_as)
+
+diario_as <- diario_as %>%
+  left_join(
+    meta_estaciones,
+    by = c("anio", "cod_local"),
+    relationship = "many-to-one"
+  )
+
+stopifnot(nrow(diario_as) == n_original)
+
+# Número de registros
+nrow(diario_as)
+
+# Comprobar cuántas observaciones tienen metadatos
+table(diario_as$anio, is.na(diario_as$nombre_estacion))
+
+# Ver las estaciones con su información
+print(diario_as)
