@@ -538,6 +538,13 @@ datos_log <- diario_as %>%
 #' )
 #' ```
 
+modelo <- glm(
+  ausente ~ mes + anio + tipo_estacion + tipo_area +
+  provincia + zona + dia_semana,
+  data = datos_log,
+  family = binomial()
+)
+
 d <- drop1(modelo, test = "Chisq")
 
 #' El año presenta el mayor $p$-valor (0,781), por lo que lo
@@ -576,6 +583,12 @@ drop1(modelo3, test = "Chisq")
 #'   family = binomial()
 #' )
 #' ```
+
+modelo_puntos <- glm(
+  ausente ~ mes + punto_muestreo + dia_semana,
+  data = datos_log,
+  family = binomial()
+)
 
 drop1(modelo_puntos, test = "Chisq")
 
